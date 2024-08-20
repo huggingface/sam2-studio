@@ -1,0 +1,24 @@
+{
+  "Inputs" : {
+    "image" : {
+      "MLFeatureShortDescription" : "--"
+    }
+  },
+  "Outputs" : {
+    "image_embedding" : {
+      "MLFeatureShortDescription" : "--"
+    },
+    "feats_s0" : {
+      "MLFeatureShortDescription" : "--"
+    },
+    "feats_s1" : {
+      "MLFeatureShortDescription" : "--"
+    }
+  },
+  "TrainingInputs" : {
+
+  },
+  "States" : {
+
+  }
+}

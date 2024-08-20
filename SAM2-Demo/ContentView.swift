@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
+import CoreML
 
 import os
 
@@ -26,6 +27,7 @@ struct ContentView: View {
     @State private var error: Error?
     
     // ML Model Properties
+    @StateObject private var sam2 = SAM2()
     var tools: [SAMTool] = [normalTool, pointTool, boundingBoxTool, eraserTool]
     var categories: [SAMCategory] = [foregroundCat, backgroundCat]
     
@@ -67,7 +69,13 @@ struct ContentView: View {
                 path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
                 path.closeSubpath()
             }
-            .stroke(box.category.color, lineWidth: 2)
+            .stroke(
+                box.category.color,
+                style: StrokeStyle(
+                    lineWidth: 2,
+                    dash: [5, 5]
+                )
+            )
         }
         if let currentBox = currentBox {
             Path { path in
@@ -77,7 +85,13 @@ struct ContentView: View {
                 path.addLine(to: CGPoint(x: currentBox.startPoint.x, y: currentBox.endPoint.y))
                 path.closeSubpath()
             }
-            .stroke(currentBox.category.color, lineWidth: 2)
+            .stroke(
+                currentBox.category.color,
+                style: StrokeStyle(
+                    lineWidth: 2,
+                    dash: [5, 5]
+                )
+            )
         }
     }
     
@@ -85,6 +99,7 @@ struct ContentView: View {
         ZStack {
             VStack {
                 // Sub-toolbar
+                // If SAM is instantaneous, this could be used for something else?
                 if selectedPoints.count > 0 || boundingBoxes.count > 0 {
                     ZStack {
                         Rectangle()
@@ -201,6 +216,16 @@ struct ContentView: View {
             if selectedCategory == nil {
                 selectedCategory = categories.first
             }
+           
+        }
+        
+        // MARK: - ML Methods
+        .onChange(of: displayImage) {
+            Task {
+                if let displayImage, let pixelBuffer = displayImage.toCVPixelBuffer(width: 1024, height: 1024) {
+                    
+                }
+            }
         }
         
         // MARK: - Photos Importer
@@ -296,6 +321,7 @@ struct ContentView: View {
             NSCursor.pop()
         }
     }
+
 }
 
 #Preview {
