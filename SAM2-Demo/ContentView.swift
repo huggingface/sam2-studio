@@ -11,36 +11,6 @@ let logger = Logger(
         "com.cyrilzakka.SAM2-Demo.ContentView",
     category: "ContentView")
 
-
-struct SAMCategory: Hashable {
-    let id: UUID = UUID()
-    let name: String
-    let iconName: String
-    let color: Color
-}
-
-struct SAMPoint: Hashable {
-    let id = UUID()
-    let coordinates: CGPoint
-    let category: SAMCategory
-}
-
-struct SAMTool: Hashable {
-    let id: UUID = UUID()
-    let name: String
-    let iconName: String
-}
-
-// Tools
-let normalTool: SAMTool = SAMTool(name: "Selector", iconName: "cursorarrow")
-let pointTool: SAMTool = SAMTool(name: "Point", iconName: "hand.point.up.left")
-let boundingBoxTool: SAMTool = SAMTool(name: "Bounding Box", iconName: "rectangle.dashed")
-let eraserTool: SAMTool = SAMTool(name: "Eraser", iconName: "eraser")
-
-// Categories
-let foregroundCat: SAMCategory = SAMCategory(name: "Foreground", iconName: "square.on.square.dashed", color: .pink)
-let backgroundCat: SAMCategory = SAMCategory(name: "Background", iconName: "square.on.square.intersection.dashed", color: .purple)
-
 struct ContentView: View {
     
     // File importer
@@ -62,6 +32,8 @@ struct ContentView: View {
     @State private var selectedTool: SAMTool?
     @State private var selectedCategory: SAMCategory?
     @State private var selectedPoints: [SAMPoint] = []
+    @State private var boundingBoxes: [SAMBox] = []
+    @State private var currentBox: SAMBox?
     
     @ViewBuilder
     var pointsOverlay: some View {
@@ -85,41 +57,94 @@ struct ContentView: View {
         }
     }
     
+    @ViewBuilder
+    var boundingBoxesOverlay: some View {
+        ForEach(boundingBoxes) { box in
+            Path { path in
+                path.move(to: box.startPoint)
+                path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y))
+                path.addLine(to: box.endPoint)
+                path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
+                path.closeSubpath()
+            }
+            .stroke(box.category.color, lineWidth: 2)
+        }
+        if let currentBox = currentBox {
+            Path { path in
+                path.move(to: currentBox.startPoint)
+                path.addLine(to: CGPoint(x: currentBox.endPoint.x, y: currentBox.startPoint.y))
+                path.addLine(to: currentBox.endPoint)
+                path.addLine(to: CGPoint(x: currentBox.startPoint.x, y: currentBox.endPoint.y))
+                path.closeSubpath()
+            }
+            .stroke(currentBox.category.color, lineWidth: 2)
+        }
+    }
     
     var body: some View {
         ZStack {
-            if let image = displayImage {
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .onTapGesture(coordinateSpace: .local) { location in
-                        if selectedTool == pointTool {
-                            placePoint(at: location)
+            VStack {
+                // Sub-toolbar
+                if selectedPoints.count > 0 || boundingBoxes.count > 0 {
+                    ZStack {
+                        Rectangle()
+                            .fill(.fill.secondary)
+                            .frame(height: 30)
+                        
+                        HStack {
+                            Spacer()
+                            Button("Reset", action: {
+                                selectedPoints.removeAll()
+                                boundingBoxes.removeAll()
+                            })
+                            .padding(.trailing, 5)
+                            .disabled(selectedPoints.count == 0)
                         }
                     }
-                    .onHover { inside in
-                        changeCursorAppearance(is: inside)
+                    .transition(.move(edge: .top))
+                    
+                }
+                ScrollView([.vertical, .horizontal]) {
+                    if let image = displayImage {
+                        Image(nsImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: 500, maxHeight: 500)
+                            .onTapGesture(coordinateSpace: .local) { location in
+                                if selectedTool == pointTool {
+                                    placePoint(at: location)
+                                }
+                            }
+                            .gesture(boundingBoxGesture)
+                            .onHover { inside in
+                                changeCursorAppearance(is: inside)
+                            }
+                            .overlay {
+                                pointsOverlay
+                                boundingBoxesOverlay
+                            }
+                    } else if let photosImage {
+                        photosImage
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 500, maxHeight: 500)
+                            .onTapGesture(coordinateSpace: .local) { location in
+                                if selectedTool == pointTool {
+                                    placePoint(at: location)
+                                }
+                            }
+                            .gesture(boundingBoxGesture)
+                            .onHover { inside in
+                                changeCursorAppearance(is: inside)
+                            }
+                            .overlay {
+                                pointsOverlay
+                                boundingBoxesOverlay
+                            }
+                    } else {
+                        ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
                     }
-                    .overlay {
-                        pointsOverlay
-                    }
-            } else if let photosImage {
-                photosImage
-                    .resizable()
-                    .scaledToFit()
-                    .onTapGesture(coordinateSpace: .local) { location in
-                        if selectedTool == pointTool {
-                            placePoint(at: location)
-                        }
-                    }
-                    .onHover { inside in
-                        changeCursorAppearance(is: inside)
-                    }
-                    .overlay {
-                        pointsOverlay
-                    }
-            } else {
-                ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
+                }
             }
         }
         .toolbar {
@@ -237,6 +262,27 @@ struct ContentView: View {
     private func placePoint(at coordinates: CGPoint) {
         let samPoint = SAMPoint(coordinates: coordinates, category: selectedCategory!)
         self.selectedPoints.append(samPoint)
+    }
+    
+    private var boundingBoxGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                guard selectedTool == boundingBoxTool else { return }
+                
+                if currentBox == nil {
+                    currentBox = SAMBox(startPoint: value.startLocation, endPoint: value.location, category: selectedCategory!)
+                } else {
+                    currentBox?.endPoint = value.location
+                }
+            }
+            .onEnded { value in
+                guard selectedTool == boundingBoxTool else { return }
+                
+                if let box = currentBox {
+                    boundingBoxes.append(box)
+                    currentBox = nil
+                }
+            }
     }
     
     private func changeCursorAppearance(is inside: Bool) {
