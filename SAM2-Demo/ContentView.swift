@@ -218,12 +218,13 @@ struct ContentView: View {
         .photosPicker(isPresented: $isImportingFromPhotos, selection: $selectedItem, matching: .any(of: [.images, .screenshots, .livePhotos]))
         .onChange(of: selectedItem) {
             Task {
-                if let loaded = try? await
-                    selectedItem?.loadTransferable(type: NSImage.self) {
-//                    displayImage = nil
-                    selectedPoints.removeAll()
-                    displayImage = loaded
-                    
+                if let loadedData = try? await
+                    selectedItem?.loadTransferable(type: Data.self) {
+                    // TODO: Move to main thread
+                    DispatchQueue.main.async {
+                        selectedPoints.removeAll()
+                        displayImage = NSImage(data: loadedData)
+                    }
                 } else {
                     logger.error("Error loading image from Photos.")
                 }
