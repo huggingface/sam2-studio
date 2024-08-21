@@ -10,23 +10,23 @@ import CoreML
 
 @MainActor
 class SAM2: ObservableObject {
-    @Published var imageEncoding: sam2_tiny_image_encoderOutput?
+    @Published var imageEncodings: sam2_tiny_image_encoderOutput?
     @Published private(set) var isModelLoaded = false
     @Published private(set) var initializationTime: TimeInterval?
     private var imageEncoderModel: sam2_tiny_image_encoder?
-
+    
     init() {
         Task {
             await loadModel()
         }
     }
-
+    
     private func loadModel() async {
         let startTime = CFAbsoluteTimeGetCurrent()
         
         do {
             let configuration = MLModelConfiguration()
-            configuration.computeUnits = .cpuAndNeuralEngine
+            configuration.computeUnits = .cpuAndGPU
             let model = try await Task.detached(priority: .userInitiated) {
                 try sam2_tiny_image_encoder(configuration: configuration)
             }.value
@@ -42,6 +42,15 @@ class SAM2: ObservableObject {
             self.isModelLoaded = false
             self.initializationTime = nil
         }
+    }
+    
+    func getImageEncoding(from pixelBuffer: CVPixelBuffer) async throws {
+        guard let model = imageEncoderModel else {
+            throw NSError(domain: "SAM2Error", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model not initialized"])
+        }
+        
+        let encoding = try model.prediction(image: pixelBuffer)
+        self.imageEncodings = encoding
     }
 }
 

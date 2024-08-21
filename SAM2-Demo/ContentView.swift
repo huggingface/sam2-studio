@@ -22,7 +22,6 @@ struct ContentView: View {
     // Photos Picker
     @State private var isImportingFromPhotos: Bool = false
     @State private var selectedItem: PhotosPickerItem?
-    @State private var photosImage: Image?
     
     @State private var error: Error?
     
@@ -138,24 +137,6 @@ struct ContentView: View {
                                 pointsOverlay
                                 boundingBoxesOverlay
                             }
-                    } else if let photosImage {
-                        photosImage
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 500, maxHeight: 500)
-                            .onTapGesture(coordinateSpace: .local) { location in
-                                if selectedTool == pointTool {
-                                    placePoint(at: location)
-                                }
-                            }
-                            .gesture(boundingBoxGesture)
-                            .onHover { inside in
-                                changeCursorAppearance(is: inside)
-                            }
-                            .overlay {
-                                pointsOverlay
-                                boundingBoxesOverlay
-                            }
                     } else {
                         ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
                     }
@@ -223,20 +204,26 @@ struct ContentView: View {
         .onChange(of: displayImage) {
             Task {
                 if let displayImage, let pixelBuffer = displayImage.toCVPixelBuffer(width: 1024, height: 1024) {
-                    
+                    do {
+                        try await sam2.getImageEncoding(from: pixelBuffer)
+                    } catch {
+                        self.error = error
+                    }
                 }
             }
         }
+        
         
         // MARK: - Photos Importer
         .photosPicker(isPresented: $isImportingFromPhotos, selection: $selectedItem, matching: .any(of: [.images, .screenshots, .livePhotos]))
         .onChange(of: selectedItem) {
             Task {
                 if let loaded = try? await
-                    selectedItem?.loadTransferable(type: Image.self) {
-                    displayImage = nil
+                    selectedItem?.loadTransferable(type: NSImage.self) {
+//                    displayImage = nil
                     selectedPoints.removeAll()
-                    photosImage = loaded
+                    displayImage = loaded
+                    
                 } else {
                     logger.error("Error loading image from Photos.")
                 }
@@ -248,7 +235,6 @@ struct ContentView: View {
                       allowedContentTypes: [.image]) { result in
             switch result {
             case .success(let file):
-                self.photosImage = nil
                 self.selectedItem = nil
                 self.selectedPoints.removeAll()
                 self.imageURL = file
