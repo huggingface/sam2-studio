@@ -82,15 +82,20 @@ class SAM2: ObservableObject {
         self.promptEncodings = encoding
     }
     
-    func getMask(from image: CGImage) async throws -> CVPixelBuffer? {
+    func getMask() async throws -> CGImage? {
         guard let model = maskDecoderModel else {
             throw SAM2Error.modelNotLoaded
         }
         
-        
-        
-        
-        
+        if let image_embedding = self.imageEncodings?.image_embedding,
+        let feats0 = self.imageEncodings?.feats_s0,
+        let feats1 = self.imageEncodings?.feats_s1,
+        let sparse_embedding = self.promptEncodings?.sparse_embeddings,
+           let dense_embedding = self.promptEncodings?.dense_embeddings {
+            let mask = try model.prediction(image_embedding: image_embedding, sparse_embedding: sparse_embedding, dense_embedding: dense_embedding, feats_s0: feats0, feats_s1: feats1)
+            let maskcgImage = mask.low_res_masks.cgImage(min: -1, max: 1, axes: (1, 2, 3))
+            return maskcgImage
+        }
         return nil
     }
 }

@@ -14,6 +14,11 @@ let logger = Logger(
 
 struct ContentView: View {
     
+    // ML Models
+    @StateObject private var sam2 = SAM2()
+    @State private var segmentationImage: CGImage?
+    @State private var imageSize: CGSize = .zero
+    
     // File importer
     @State private var imageURL: URL?
     @State private var isImportingFromFiles: Bool = false
@@ -26,7 +31,6 @@ struct ContentView: View {
     @State private var error: Error?
     
     // ML Model Properties
-    @StateObject private var sam2 = SAM2()
     var tools: [SAMTool] = [normalTool, pointTool, boundingBoxTool, eraserTool]
     var categories: [SAMCategory] = [foregroundCat, backgroundCat]
     
@@ -94,6 +98,19 @@ struct ContentView: View {
         }
     }
     
+    @ViewBuilder
+    var segmentationOverlay: some View {
+        if let segmentationImage = segmentationImage {
+            let nsImage = NSImage(cgImage: segmentationImage, size: imageSize)
+            Image(nsImage: nsImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: imageSize.width, height: imageSize.height)
+                .opacity(0.7)
+                .blendMode(.overlay)
+        }
+    }
+    
     var body: some View {
         ZStack {
             VStack {
@@ -134,9 +151,18 @@ struct ContentView: View {
                             .onHover { inside in
                                 changeCursorAppearance(is: inside)
                             }
+                            .background(
+                                GeometryReader { geometry in
+                                    Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
+                                }
+                            )
+                            .onPreferenceChange(SizePreferenceKey.self) { size in
+                                imageSize = size
+                            }
                             .overlay {
                                 pointsOverlay
                                 boundingBoxesOverlay
+                                segmentationOverlay
                             }
                     } else {
                         ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
@@ -315,13 +341,25 @@ struct ContentView: View {
         Task {
             do {
                 try await sam2.getPromptEncoding(from: self.selectedPoints)
-                print(sam2.promptEncodings)
+                let cgImageMask = try await sam2.getMask()
+                if let cgImageMask {
+                    DispatchQueue.main.async {
+                        self.segmentationImage = cgImageMask
+                    }
+                }
             } catch {
                 self.error = error
             }
         }
     }
 
+}
+
+struct SizePreferenceKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
+    }
 }
 
 #Preview {
