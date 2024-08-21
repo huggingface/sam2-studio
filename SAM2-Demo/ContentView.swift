@@ -127,6 +127,7 @@ struct ContentView: View {
                             .onTapGesture(coordinateSpace: .local) { location in
                                 if selectedTool == pointTool {
                                     placePoint(at: location)
+                                    performForwardPass()
                                 }
                             }
                             .gesture(boundingBoxGesture)
@@ -200,7 +201,7 @@ struct ContentView: View {
            
         }
         
-        // MARK: - ML Methods
+        // MARK: - Image encoding
         .onChange(of: displayImage) {
             Task {
                 if let displayImage, let pixelBuffer = displayImage.toCVPixelBuffer(width: 1024, height: 1024) {
@@ -212,7 +213,6 @@ struct ContentView: View {
                 }
             }
         }
-        
         
         // MARK: - Photos Importer
         .photosPicker(isPresented: $isImportingFromPhotos, selection: $selectedItem, matching: .any(of: [.images, .screenshots, .livePhotos]))
@@ -306,6 +306,19 @@ struct ContentView: View {
             }
         } else {
             NSCursor.pop()
+        }
+    }
+    
+    
+    // MARK: ML Methods
+    private func performForwardPass() {
+        Task {
+            do {
+                try await sam2.getPromptEncoding(from: self.selectedPoints)
+                print(sam2.promptEncodings)
+            } catch {
+                self.error = error
+            }
         }
     }
 

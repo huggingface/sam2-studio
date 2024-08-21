@@ -13,12 +13,13 @@ class SAM2: ObservableObject {
     
     @Published var imageEncodings: sam2_tiny_image_encoderOutput?
     @Published var promptEncodings: sam2_tiny_prompt_encoderOutput?
+    @Published var maskDecoding: sam2_tiny_mask_decoderOutput?
     
     @Published private(set) var initializationTime: TimeInterval?
     
-    
     private var imageEncoderModel: sam2_tiny_image_encoder?
     private var promptEncoderModel: sam2_tiny_prompt_encoder?
+    private var maskDecoderModel: sam2_tiny_mask_decoder?
     
     init() {
         Task {
@@ -32,10 +33,11 @@ class SAM2: ObservableObject {
         do {
             let configuration = MLModelConfiguration()
             configuration.computeUnits = .cpuAndGPU
-            let (imageEncoder, promptEncoder) = try await Task.detached(priority: .userInitiated) {
+            let (imageEncoder, promptEncoder, maskDecoder) = try await Task.detached(priority: .userInitiated) {
                 let imageEncoder = try sam2_tiny_image_encoder(configuration: configuration)
                 let promptEncoder = try sam2_tiny_prompt_encoder(configuration: configuration)
-                return (imageEncoder, promptEncoder)
+                let maskDecoder = try sam2_tiny_mask_decoder(configuration: configuration)
+                return (imageEncoder, promptEncoder, maskDecoder)
             }.value
             
             let endTime = CFAbsoluteTimeGetCurrent()
@@ -43,6 +45,7 @@ class SAM2: ObservableObject {
             
             self.imageEncoderModel = imageEncoder
             self.promptEncoderModel = promptEncoder
+            self.maskDecoderModel = maskDecoder
             print("Initialized models in \(String(format: "%.4f", self.initializationTime!)) seconds")
         } catch {
             print("Failed to initialize models: \(error)")
@@ -77,6 +80,18 @@ class SAM2: ObservableObject {
         
         let encoding = try model.prediction(points: pointsMultiArray, labels: labelsMultiArray)
         self.promptEncodings = encoding
+    }
+    
+    func getMask(from image: CGImage) async throws -> CVPixelBuffer? {
+        guard let model = maskDecoderModel else {
+            throw SAM2Error.modelNotLoaded
+        }
+        
+        
+        
+        
+        
+        return nil
     }
 }
 
