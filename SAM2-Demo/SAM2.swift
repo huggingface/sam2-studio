@@ -98,22 +98,16 @@ class SAM2: ObservableObject {
             let low_featureMask = output.low_res_masks
             
             
-            // Convert low_featureMask from float16 to float32 and threshold
+            // Cast low_featureMask from float16 to float32 and threshold
             let float32Mask = try! MLMultiArray(shape: low_featureMask.shape, dataType: .float32)
+
             for i in 0..<low_featureMask.count {
                 float32Mask[i] = low_featureMask[i].floatValue > 0.0 ? 1.0 : 0.0
             }
-            
-            // Save mask.low_res_masks
-//            if let image = convertMultiArrayToImage(multiArray: float32Mask) {
-//                let desktopURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("mask.png")
-//                if image.pngWrite(to: desktopURL, options: .atomic) {
-//                    print("File saved")
-//                }
-//            } else {
-//                print("Failed to convert MultiArray to image")
-//            }
+            print(float32Mask.shape)
+            let desktopURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("\(UUID().uuidString).png")
             if let maskcgImage = float32Mask.cgImage(min: 0, max: 1, axes: (1, 2, 3)) {
+                writeCGImage(maskcgImage, to: desktopURL)
                 let resizedImage = try resizeCGImage(maskcgImage, to: original_size)
                 return resizedImage
             } else {
@@ -159,89 +153,8 @@ enum SAM2Error: Error {
     case imageResizingFailed
 }
 
-
-
-// Debug
-
-func convertMultiArrayToImage(multiArray: MLMultiArray, with originalSize: CGSize) -> NSImage? {
-    guard multiArray.shape.count == 4,
-          multiArray.shape[0] == 1,
-          multiArray.shape[1] == 3,
-          multiArray.shape[2] == 256,
-          multiArray.shape[3] == 256 else {
-        print("Invalid multiArray shape")
-        return nil
-    }
-
-    let width = Int(originalSize.width)
-    let height = Int(originalSize.height)
-    
-    var pixelBuffer = [UInt8](repeating: 0, count: width * height * 4)
-    
-    // Find min and max values for normalization
-    var minValue: Float = Float.infinity
-    var maxValue: Float = -Float.infinity
-    
-    for i in 0..<multiArray.count {
-        let value = Float(multiArray[i].floatValue)
-        minValue = min(minValue, value)
-        maxValue = max(maxValue, value)
-    }
-    print(maxValue, minValue)
-    // Function to normalize values
-    func normalize(_ value: Float) -> UInt8 {
-        let normalized = (value - minValue) / (maxValue - minValue)
-        return UInt8(max(0, min(255, normalized * 255)))
-    }
-    
-    for y in 0..<height {
-        for x in 0..<width {
-            let redIndex = y * width + x
-            let greenIndex = width * height + y * width + x
-            let blueIndex = 2 * width * height + y * width + x
-            
-            let red = Float(multiArray[redIndex].floatValue)
-            let green = Float(multiArray[greenIndex].floatValue)
-            let blue = Float(multiArray[blueIndex].floatValue)
-            
-            let pixelIndex = (y * width + x) * 4
-            pixelBuffer[pixelIndex] = normalize(red)
-            pixelBuffer[pixelIndex + 1] = normalize(green)
-            pixelBuffer[pixelIndex + 2] = normalize(blue)
-            pixelBuffer[pixelIndex + 3] = 255 // Alpha channel
-        }
-    }
-    
-    let colorSpace = CGColorSpaceCreateDeviceRGB()
-    let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-    guard let provider = CGDataProvider(data: Data(pixelBuffer) as CFData) else { return nil }
-    guard let cgImage = CGImage(width: width,
-                                height: height,
-                                bitsPerComponent: 8,
-                                bitsPerPixel: 32,
-                                bytesPerRow: width * 4,
-                                space: colorSpace,
-                                bitmapInfo: bitmapInfo,
-                                provider: provider,
-                                decode: nil,
-                                shouldInterpolate: true,
-                                intent: .defaultIntent) else { return nil }
-    
-    return NSImage(cgImage: cgImage, size: NSSize(width: width, height: height))
-}
-
-extension NSImage {
-    var pngData: Data? {
-        guard let tiffRepresentation = tiffRepresentation, let bitmapImage = NSBitmapImageRep(data: tiffRepresentation) else { return nil }
-        return bitmapImage.representation(using: .png, properties: [:])
-    }
-    func pngWrite(to url: URL, options: Data.WritingOptions = .atomic) -> Bool {
-        do {
-            try pngData?.write(to: url, options: options)
-            return true
-        } catch {
-            print(error)
-            return false
-        }
-    }
+@discardableResult func writeCGImage(_ image: CGImage, to destinationURL: URL) -> Bool {
+    guard let destination = CGImageDestinationCreateWithURL(destinationURL as CFURL, kUTTypePNG, 1, nil) else { return false }
+    CGImageDestinationAddImage(destination, image, nil)
+    return CGImageDestinationFinalize(destination)
 }
