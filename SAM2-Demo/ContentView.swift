@@ -39,6 +39,7 @@ struct ContentView: View {
     @State private var selectedPoints: [SAMPoint] = []
     @State private var boundingBoxes: [SAMBox] = []
     @State private var currentBox: SAMBox?
+    @State private var originalSize: NSSize?
     
     @ViewBuilder
     var pointsOverlay: some View {
@@ -107,7 +108,7 @@ struct ContentView: View {
                 .scaledToFit()
                 .frame(width: imageSize.width, height: imageSize.height)
                 .opacity(0.7)
-                .blendMode(.overlay)
+                
         }
     }
     
@@ -230,7 +231,8 @@ struct ContentView: View {
         // MARK: - Image encoding
         .onChange(of: displayImage) {
             Task {
-                if let displayImage, let pixelBuffer = displayImage.toCVPixelBuffer(width: 1024, height: 1024) {
+                if let displayImage, let pixelBuffer = displayImage.pixelBuffer(width: 1024, height: 1024) {
+                    originalSize = displayImage.size
                     do {
                         try await sam2.getImageEncoding(from: pixelBuffer)
                     } catch {
@@ -246,7 +248,6 @@ struct ContentView: View {
             Task {
                 if let loadedData = try? await
                     selectedItem?.loadTransferable(type: Data.self) {
-                    // TODO: Move to main thread
                     DispatchQueue.main.async {
                         selectedPoints.removeAll()
                         displayImage = NSImage(data: loadedData)
@@ -340,8 +341,8 @@ struct ContentView: View {
     private func performForwardPass() {
         Task {
             do {
-                try await sam2.getPromptEncoding(from: self.selectedPoints)
-                let cgImageMask = try await sam2.getMask()
+                try await sam2.getPromptEncoding(from: self.selectedPoints, with: originalSize ?? .zero)
+                let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
                 if let cgImageMask {
                     DispatchQueue.main.async {
                         self.segmentationImage = cgImageMask

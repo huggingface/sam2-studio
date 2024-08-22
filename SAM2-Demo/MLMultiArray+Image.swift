@@ -307,26 +307,3 @@ public func createCGImage(fromFloatArray features: MLMultiArray,
     return nil
   }
 }
-
-#if canImport(UIKit)
-
-import UIKit
-
-extension MLMultiArray {
-  public func image(min: Double = 0,
-                    max: Double = 255,
-                    channel: Int? = nil,
-                    axes: (Int, Int, Int)? = nil) -> UIImage? {
-    let cgImg = cgImage(min: min, max: max, channel: channel, axes: axes)
-    return cgImg.map { UIImage(cgImage: $0) }
-  }
-}
-
-public func createUIImage(fromFloatArray features: MLMultiArray,
-                          min: Float = 0,
-                          max: Float = 255) -> UIImage? {
-  let cgImg = createCGImage(fromFloatArray: features, min: min, max: max)
-  return cgImg.map { UIImage(cgImage: $0) }
-}
-
-#endif
