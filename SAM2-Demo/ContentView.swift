@@ -106,6 +106,7 @@ struct ContentView: View {
             Image(nsImage: nsImage)
                 .resizable()
                 .scaledToFit()
+                .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
                 .opacity(0.7)
                 
@@ -128,6 +129,7 @@ struct ContentView: View {
                             Button("Reset", action: {
                                 selectedPoints.removeAll()
                                 boundingBoxes.removeAll()
+                                segmentationImage = nil
                             })
                             .padding(.trailing, 5)
                             .disabled(selectedPoints.count == 0)
