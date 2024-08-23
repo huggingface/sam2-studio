@@ -343,7 +343,7 @@ struct ContentView: View {
     private func performForwardPass() {
         Task {
             do {
-                try await sam2.getPromptEncoding(from: self.selectedPoints, with: originalSize ?? .zero)
+                try await sam2.getPromptEncoding(from: self.selectedPoints, with: imageSize)
                 let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
                 if let cgImageMask {
                     DispatchQueue.main.async {
