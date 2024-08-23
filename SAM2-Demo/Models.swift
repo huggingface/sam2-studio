@@ -9,8 +9,8 @@ import Foundation
 import SwiftUI
 
 enum SAMCategoryType: Int {
-    case foreground = 0
-    case background = 1
+    case foreground = 1
+    case background = 0
     
     var description: String {
         switch self {
