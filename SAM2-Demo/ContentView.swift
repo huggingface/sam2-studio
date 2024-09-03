@@ -32,7 +32,7 @@ struct ContentView: View {
     
     // ML Model Properties
     var tools: [SAMTool] = [normalTool, pointTool, boundingBoxTool, eraserTool]
-    var categories: [SAMCategory] = [foregroundCat, backgroundCat]
+    var categories: [SAMCategory] = [.foreground, .background]
     
     @State private var selectedTool: SAMTool?
     @State private var selectedCategory: SAMCategory?
@@ -40,7 +40,11 @@ struct ContentView: View {
     @State private var boundingBoxes: [SAMBox] = []
     @State private var currentBox: SAMBox?
     @State private var originalSize: NSSize?
-    
+
+    var pointSequence: [SAMPoint] {
+        boundingBoxes.flatMap { $0.points } + selectedPoints
+    }
+
     @ViewBuilder
     var pointsOverlay: some View {
         if selectedPoints.count > 0 {
@@ -132,7 +136,7 @@ struct ContentView: View {
                                 segmentationImage = nil
                             })
                             .padding(.trailing, 5)
-                            .disabled(selectedPoints.count == 0)
+                            .disabled(pointSequence.isEmpty)
                         }
                     }
                     .transition(.move(edge: .top))
@@ -322,6 +326,7 @@ struct ContentView: View {
                 if let box = currentBox {
                     boundingBoxes.append(box)
                     currentBox = nil
+                    performForwardPass()
                 }
             }
     }
@@ -343,7 +348,7 @@ struct ContentView: View {
     private func performForwardPass() {
         Task {
             do {
-                try await sam2.getPromptEncoding(from: self.selectedPoints, with: imageSize)
+                try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
                 let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
                 if let cgImageMask {
                     DispatchQueue.main.async {
