@@ -12,6 +12,208 @@ let logger = Logger(
         "com.cyrilzakka.SAM2-Demo.ContentView",
     category: "ContentView")
 
+
+struct SubToolbar: View {
+    @Binding var selectedPoints: [SAMPoint]
+    @Binding var boundingBoxes: [SAMBox]
+    @Binding var segmentationImage: CGImage?
+
+    var body: some View {
+        if selectedPoints.count > 0 || boundingBoxes.count > 0 {
+            ZStack {
+                Rectangle()
+                    .fill(.fill.secondary)
+                    .frame(height: 30)
+                
+                HStack {
+                    Spacer()
+                    Button("Reset", action: resetAll)
+                        .padding(.trailing, 5)
+                        .disabled(selectedPoints.isEmpty && boundingBoxes.isEmpty)
+                }
+            }
+            .transition(.move(edge: .top))
+        }
+    }
+
+    private func resetAll() {
+        selectedPoints.removeAll()
+        boundingBoxes.removeAll()
+        segmentationImage = nil
+    }
+}
+
+struct PointsOverlay: View {
+    @Binding var selectedPoints: [SAMPoint]
+    @Binding var selectedTool: SAMTool?
+
+    var body: some View {
+        ForEach(selectedPoints, id: \.self) { point in
+            Image(systemName: "circle.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 15, height: 15)
+                .foregroundStyle(point.category.color)
+                .position(x: point.coordinates.x, y: point.coordinates.y)
+                .onTapGesture {
+                    if selectedTool == eraserTool {
+                        selectedPoints.removeAll { $0.id == point.id }
+                    }
+                }
+        }
+    }
+}
+
+struct BoundingBoxesOverlay: View {
+    let boundingBoxes: [SAMBox]
+    let currentBox: SAMBox?
+
+    var body: some View {
+        ForEach(boundingBoxes) { box in
+            BoundingBoxPath(box: box)
+        }
+        if let currentBox = currentBox {
+            BoundingBoxPath(box: currentBox)
+        }
+    }
+}
+
+struct BoundingBoxPath: View {
+    let box: SAMBox
+
+    var body: some View {
+        Path { path in
+            path.move(to: box.startPoint)
+            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y))
+            path.addLine(to: box.endPoint)
+            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
+            path.closeSubpath()
+        }
+        .stroke(
+            box.category.color,
+            style: StrokeStyle(lineWidth: 2, dash: [5, 5])
+        )
+    }
+}
+
+struct SegmentationOverlay: View {
+    let segmentationImage: CGImage?
+    let imageSize: CGSize
+
+    var body: some View {
+        if let segmentationImage = segmentationImage {
+            let nsImage = NSImage(cgImage: segmentationImage, size: imageSize)
+            Image(nsImage: nsImage)
+                .resizable()
+                .scaledToFit()
+                .allowsHitTesting(false)
+                .frame(width: imageSize.width, height: imageSize.height)
+                .opacity(0.7)
+        }
+    }
+}
+
+struct ImageView: View {
+    let image: NSImage
+    @Binding var currentScale: CGFloat
+    @Binding var selectedTool: SAMTool?
+    @Binding var selectedCategory: SAMCategory?
+    @Binding var selectedPoints: [SAMPoint]
+    @Binding var boundingBoxes: [SAMBox]
+    @Binding var currentBox: SAMBox?
+    @Binding var segmentationImage: CGImage?
+    @Binding var imageSize: CGSize
+    @Binding var originalSize: NSSize?
+    @ObservedObject var sam2: SAM2
+    @State private var error: Error?
+    
+    var pointSequence: [SAMPoint] {
+        boundingBoxes.flatMap { $0.points } + selectedPoints
+    }
+
+    var body: some View {
+        Image(nsImage: image)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .scaleEffect(currentScale)
+            .frame(maxWidth: 500, maxHeight: 500)
+            .onTapGesture(coordinateSpace: .local) { handleTap(at: $0) }
+            .gesture(boundingBoxGesture)
+            .onHover { changeCursorAppearance(is: $0) }
+            .background(GeometryReader { geometry in
+                Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
+            })
+            .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
+            .overlay {
+                PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool)
+                BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
+                SegmentationOverlay(segmentationImage: segmentationImage, imageSize: imageSize)
+            }
+    }
+    
+    private func changeCursorAppearance(is inside: Bool) {
+        if inside {
+            if selectedTool == pointTool {
+                NSCursor.pointingHand.push()
+            } else if selectedTool == boundingBoxTool {
+                NSCursor.crosshair.push()
+            }
+        } else {
+            NSCursor.pop()
+        }
+    }
+    
+    private var boundingBoxGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                guard selectedTool == boundingBoxTool else { return }
+                
+                if currentBox == nil {
+                    currentBox = SAMBox(startPoint: value.startLocation, endPoint: value.location, category: selectedCategory!)
+                } else {
+                    currentBox?.endPoint = value.location
+                }
+            }
+            .onEnded { value in
+                guard selectedTool == boundingBoxTool else { return }
+                
+                if let box = currentBox {
+                    boundingBoxes.append(box)
+                    currentBox = nil
+                    performForwardPass()
+                }
+            }
+    }
+    
+    private func handleTap(at location: CGPoint) {
+        if selectedTool == pointTool {
+            placePoint(at: location)
+            performForwardPass()
+        }
+    }
+    
+    private func placePoint(at coordinates: CGPoint) {
+        let samPoint = SAMPoint(coordinates: coordinates, category: selectedCategory!)
+        self.selectedPoints.append(samPoint)
+    }
+    
+    private func performForwardPass() {
+        Task {
+            do {
+                try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
+                let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
+                if let cgImageMask {
+                    DispatchQueue.main.async {
+                        self.segmentationImage = cgImageMask
+                    }
+                }
+            } catch {
+                self.error = error
+            }
+        }
+    }
+}
+
 struct ContentView: View {
     
     // ML Models
@@ -40,137 +242,17 @@ struct ContentView: View {
     @State private var boundingBoxes: [SAMBox] = []
     @State private var currentBox: SAMBox?
     @State private var originalSize: NSSize?
-
-    var pointSequence: [SAMPoint] {
-        boundingBoxes.flatMap { $0.points } + selectedPoints
-    }
-
-    @ViewBuilder
-    var pointsOverlay: some View {
-        if selectedPoints.count > 0 {
-            ForEach(selectedPoints, id: \.self) { point in
-                Image(systemName: "circle.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 15, height: 15)
-                    .foregroundStyle(point.category.color)
-                    .position(
-                        x: point.coordinates.x,
-                        y: point.coordinates.y
-                    )
-                    .onTapGesture {
-                        if selectedTool == eraserTool {
-                            selectedPoints.removeAll { $0.id == point.id }
-                        }
-                    }
-            }
-        }
-    }
+    @State private var currentScale: CGFloat = 1.0
     
-    @ViewBuilder
-    var boundingBoxesOverlay: some View {
-        ForEach(boundingBoxes) { box in
-            Path { path in
-                path.move(to: box.startPoint)
-                path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y))
-                path.addLine(to: box.endPoint)
-                path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
-                path.closeSubpath()
-            }
-            .stroke(
-                box.category.color,
-                style: StrokeStyle(
-                    lineWidth: 2,
-                    dash: [5, 5]
-                )
-            )
-        }
-        if let currentBox = currentBox {
-            Path { path in
-                path.move(to: currentBox.startPoint)
-                path.addLine(to: CGPoint(x: currentBox.endPoint.x, y: currentBox.startPoint.y))
-                path.addLine(to: currentBox.endPoint)
-                path.addLine(to: CGPoint(x: currentBox.startPoint.x, y: currentBox.endPoint.y))
-                path.closeSubpath()
-            }
-            .stroke(
-                currentBox.category.color,
-                style: StrokeStyle(
-                    lineWidth: 2,
-                    dash: [5, 5]
-                )
-            )
-        }
-    }
-    
-    @ViewBuilder
-    var segmentationOverlay: some View {
-        if let segmentationImage = segmentationImage {
-            let nsImage = NSImage(cgImage: segmentationImage, size: imageSize)
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFit()
-                .allowsHitTesting(false)
-                .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(0.7)
-                
-        }
-    }
     
     var body: some View {
         ZStack {
             VStack {
-                // Sub-toolbar
-                // If SAM is instantaneous, this could be used for something else?
-                if selectedPoints.count > 0 || boundingBoxes.count > 0 {
-                    ZStack {
-                        Rectangle()
-                            .fill(.fill.secondary)
-                            .frame(height: 30)
-                        
-                        HStack {
-                            Spacer()
-                            Button("Reset", action: {
-                                selectedPoints.removeAll()
-                                boundingBoxes.removeAll()
-                                segmentationImage = nil
-                            })
-                            .padding(.trailing, 5)
-                            .disabled(pointSequence.isEmpty)
-                        }
-                    }
-                    .transition(.move(edge: .top))
-                    
-                }
+                SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImage: $segmentationImage)
+                
                 ScrollView([.vertical, .horizontal]) {
                     if let image = displayImage {
-                        Image(nsImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: 500, maxHeight: 500)
-                            .onTapGesture(coordinateSpace: .local) { location in
-                                if selectedTool == pointTool {
-                                    placePoint(at: location)
-                                    performForwardPass()
-                                }
-                            }
-                            .gesture(boundingBoxGesture)
-                            .onHover { inside in
-                                changeCursorAppearance(is: inside)
-                            }
-                            .background(
-                                GeometryReader { geometry in
-                                    Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
-                                }
-                            )
-                            .onPreferenceChange(SizePreferenceKey.self) { size in
-                                imageSize = size
-                            }
-                            .overlay {
-                                pointsOverlay
-                                boundingBoxesOverlay
-                                segmentationOverlay
-                            }
+                        ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImage: $segmentationImage, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
                     } else {
                         ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
                     }
@@ -233,7 +315,7 @@ struct ContentView: View {
             }
            
         }
-        
+
         // MARK: - Image encoding
         .onChange(of: displayImage) {
             Task {
@@ -304,62 +386,6 @@ struct ContentView: View {
         }
     }
     
-    private func placePoint(at coordinates: CGPoint) {
-        let samPoint = SAMPoint(coordinates: coordinates, category: selectedCategory!)
-        self.selectedPoints.append(samPoint)
-    }
-    
-    private var boundingBoxGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                guard selectedTool == boundingBoxTool else { return }
-                
-                if currentBox == nil {
-                    currentBox = SAMBox(startPoint: value.startLocation, endPoint: value.location, category: selectedCategory!)
-                } else {
-                    currentBox?.endPoint = value.location
-                }
-            }
-            .onEnded { value in
-                guard selectedTool == boundingBoxTool else { return }
-                
-                if let box = currentBox {
-                    boundingBoxes.append(box)
-                    currentBox = nil
-                    performForwardPass()
-                }
-            }
-    }
-    
-    private func changeCursorAppearance(is inside: Bool) {
-        if inside {
-            if selectedTool == pointTool {
-                NSCursor.pointingHand.push()
-            } else if selectedTool == boundingBoxTool {
-                NSCursor.crosshair.push()
-            }
-        } else {
-            NSCursor.pop()
-        }
-    }
-    
-    
-    // MARK: ML Methods
-    private func performForwardPass() {
-        Task {
-            do {
-                try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
-                let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
-                if let cgImageMask {
-                    DispatchQueue.main.async {
-                        self.segmentationImage = cgImageMask
-                    }
-                }
-            } catch {
-                self.error = error
-            }
-        }
-    }
 
 }
 
