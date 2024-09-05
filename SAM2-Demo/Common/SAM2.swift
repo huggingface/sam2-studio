@@ -15,8 +15,8 @@ class SAM2: ObservableObject {
     
     @Published var imageEncodings: sam2_small_image_encoderOutput?
     @Published var promptEncodings: sam2_small_prompt_encoderOutput?
-    @Published var maskDecoding: sam2_small_mask_decoderOutput?
-    
+    @Published var thresholdedMask: CGImage?
+
     @Published private(set) var initializationTime: TimeInterval?
     @Published private(set) var initialized: Bool?
 
@@ -131,17 +131,14 @@ class SAM2: ObservableObject {
             // Cast low_featureMask from float16 to float32 and threshold
             let float32Mask = try! MLMultiArray(shape: low_featureMask.shape, dataType: .float32)
 
+            // TODO: optimization (threshold, resizing)
             for i in 0..<low_featureMask.count {
                 float32Mask[i] = low_featureMask[i].floatValue > 0.0 ? 1.0 : 0.0
             }
-            print(float32Mask.shape)
-            let desktopURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("\(UUID().uuidString).png")
             if let maskcgImage = float32Mask.cgImage(min: 0, max: 1, axes: (1, 2, 3)) {
-                writeCGImage(maskcgImage, to: desktopURL)
+                self.thresholdedMask = maskcgImage
                 let resizedImage = try resizeCGImage(maskcgImage, to: original_size)
                 return resizedImage
-            } else {
-                return nil
             }
         }
         return nil
