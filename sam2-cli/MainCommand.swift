@@ -7,6 +7,20 @@ import Combine
 
 let context = CIContext()
 
+enum PointType: Int, ExpressibleByArgument {
+    case background = 0
+    case foreground = 1
+
+    var asCategory: SAMCategory {
+        switch self {
+            case .background:
+                return SAMCategory.background
+            case .foreground:
+                return SAMCategory.foreground
+        }
+    }
+}
+
 @main
 struct MainCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -18,8 +32,11 @@ struct MainCommand: AsyncParsableCommand {
     var input: String
 
     // TODO: multiple points
-    @Option(name: .shortAndLong, help: "Input coordinates in format 'x,y'. Coordinates are relative to the model's input image size.")
+    @Option(name: .shortAndLong, help: "Input coordinates in format 'x,y'. Coordinates are relative to the input image size.")
     var point: CGPoint
+
+    @Option(name: .shortAndLong, help: "Point type.")
+    var type: PointType
 
     @Option(name: .shortAndLong, help: "The output PNG image file, showing the segmentation map overlaid on top of the original image.")
     var output: String
@@ -57,29 +74,28 @@ struct MainCommand: AsyncParsableCommand {
         let duration = clock.now - start
         print("Image encoding took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
 
+        let startMask = clock.now
+        let pointSequence = [SAMPoint(coordinates:point, category:SAMCategory.foreground)]
+        try await sam.getPromptEncoding(from: pointSequence, with: inputImage.extent.size)
+        guard let cgImageMask = try await sam.getMask(for: inputImage.extent.size) else {
+            throw ExitCode(EXIT_FAILURE)
+        }
+        let maskDuration = clock.now - startMask
+        print("Prompt encoding and mask generation took \(maskDuration.formatted(.units(allowed: [.seconds, .milliseconds])))")
 
+        let maskImage = CIImage(cgImage: cgImageMask)
 
+        // Write mask
+        if let mask = mask {
+            context.writePNG(maskImage, to: URL(filePath: mask))
+        }
 
-        //
-//        guard let semanticImage = try? postProcessor.semanticImage(semanticPredictions: semanticPredictions) else {
-//            print("Error post-processing semanticPredictions")
-//            throw ExitCode(EXIT_FAILURE)
-//        }
-//
-//        // Undo the scale to match the original image size
-//        // TODO: Bilinear?
-//        let outputImage = semanticImage.resized(to: CGSize(width: inputImage.extent.width, height: inputImage.extent.height))
-//        // Save mask if we need to
-//        if let mask = mask {
-//            context.writePNG(outputImage, to: URL(filePath: mask))
-//        }
-//
-//        // Display mask over original
-//        guard let outputImage = outputImage.withAlpha(0.5)?.composited(over: inputImage) else {
-//            print("Failed to blend mask.")
-//            throw ExitCode(EXIT_FAILURE)
-//        }
-//        context.writePNG(outputImage, to: URL(filePath: output))
+        // Overlay over original and save
+        guard let outputImage = maskImage.withAlpha(0.5)?.composited(over: inputImage) else {
+            print("Failed to blend mask.")
+            throw ExitCode(EXIT_FAILURE)
+        }
+        context.writePNG(outputImage, to: URL(filePath: output))
     }
 }
 
