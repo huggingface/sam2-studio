@@ -8,20 +8,27 @@
 import SwiftUI
 import CoreML
 import CoreImage
+import Combine
 
 @MainActor
 class SAM2: ObservableObject {
     
-    @Published var imageEncodings: sam2_tiny_image_encoderOutput?
-    @Published var promptEncodings: sam2_tiny_prompt_encoderOutput?
-    @Published var maskDecoding: sam2_tiny_mask_decoderOutput?
+    @Published var imageEncodings: sam2_small_image_encoderOutput?
+    @Published var promptEncodings: sam2_small_prompt_encoderOutput?
+    @Published var maskDecoding: sam2_small_mask_decoderOutput?
     
     @Published private(set) var initializationTime: TimeInterval?
-    
-    private var imageEncoderModel: sam2_tiny_image_encoder?
-    private var promptEncoderModel: sam2_tiny_prompt_encoder?
-    private var maskDecoderModel: sam2_tiny_mask_decoder?
-    
+    @Published private(set) var initialized: Bool?
+
+    private var imageEncoderModel: sam2_small_image_encoder?
+    private var promptEncoderModel: sam2_small_prompt_encoder?
+    private var maskDecoderModel: sam2_small_mask_decoder?
+
+    // TODO: examine model inputs instead
+    var inputSize: CGSize { CGSize(width: 1024, height: 1024) }
+    var width: CGFloat { inputSize.width }
+    var height: CGFloat { inputSize.height }
+
     init() {
         Task {
             await loadModels()
@@ -35,15 +42,16 @@ class SAM2: ObservableObject {
             let configuration = MLModelConfiguration()
             configuration.computeUnits = .cpuAndGPU
             let (imageEncoder, promptEncoder, maskDecoder) = try await Task.detached(priority: .userInitiated) {
-                let imageEncoder = try sam2_tiny_image_encoder(configuration: configuration)
-                let promptEncoder = try sam2_tiny_prompt_encoder(configuration: configuration)
-                let maskDecoder = try sam2_tiny_mask_decoder(configuration: configuration)
+                let imageEncoder = try sam2_small_image_encoder(configuration: configuration)
+                let promptEncoder = try sam2_small_prompt_encoder(configuration: configuration)
+                let maskDecoder = try sam2_small_mask_decoder(configuration: configuration)
                 return (imageEncoder, promptEncoder, maskDecoder)
             }.value
             
             let endTime = CFAbsoluteTimeGetCurrent()
             self.initializationTime = endTime - startTime
-            
+            self.initialized = true
+
             self.imageEncoderModel = imageEncoder
             self.promptEncoderModel = promptEncoder
             self.maskDecoderModel = maskDecoder
@@ -51,9 +59,31 @@ class SAM2: ObservableObject {
         } catch {
             print("Failed to initialize models: \(error)")
             self.initializationTime = nil
+            self.initialized = false
         }
     }
-    
+
+    // Convenience for use in the CLI
+    private var modelLoading: AnyCancellable?
+    func ensureModelsAreLoaded() async throws -> SAM2 {
+        let _ = try await withCheckedThrowingContinuation { continuation in
+            modelLoading = self.$initialized.sink { newValue in
+                if let initialized = newValue {
+                    if initialized {
+                        continuation.resume(returning: self)
+                    } else {
+                        continuation.resume(throwing: SAM2Error.modelNotLoaded)
+                    }
+                }
+            }
+        }
+        return self
+    }
+
+    static func load() async throws -> SAM2 {
+        try await SAM2().ensureModelsAreLoaded()
+    }
+
     func getImageEncoding(from pixelBuffer: CVPixelBuffer) async throws {
         guard let model = imageEncoderModel else {
             throw SAM2Error.modelNotLoaded
@@ -119,7 +149,7 @@ class SAM2: ObservableObject {
 
     private func transformCoords(_ coords: [CGPoint], normalize: Bool = false, origHW: CGSize) throws -> [CGPoint] {
         guard normalize else {
-            return coords.map { CGPoint(x: $0.x * 1024, y: $0.y * 1024) } // Don't hardcode resolution
+            return coords.map { CGPoint(x: $0.x * width, y: $0.y * height) }
         }
         
         let w = origHW.width
@@ -128,23 +158,23 @@ class SAM2: ObservableObject {
         return coords.map { coord in
             let normalizedX = coord.x / w
             let normalizedY = coord.y / h
-            return CGPoint(x: normalizedX * 1024, y: normalizedY * 1024)
+            return CGPoint(x: normalizedX * width, y: normalizedY * height)
         }
     }
     
     private func resizeCGImage(_ image: CGImage, to size: CGSize) throws -> CGImage {
-            let ciImage = CIImage(cgImage: image)
-            let scale = CGAffineTransform(scaleX: size.width / CGFloat(image.width),
-                                          y: size.height / CGFloat(image.height))
-            let scaledImage = ciImage.transformed(by: scale)
-            
-            let context = CIContext(options: nil)
-            guard let resizedImage = context.createCGImage(scaledImage, from: scaledImage.extent) else {
-                throw SAM2Error.imageResizingFailed
-            }
-            
-            return resizedImage
+        let ciImage = CIImage(cgImage: image)
+        let scale = CGAffineTransform(scaleX: size.width / CGFloat(image.width),
+                                      y: size.height / CGFloat(image.height))
+        let scaledImage = ciImage.transformed(by: scale)
+
+        let context = CIContext(options: nil)
+        guard let resizedImage = context.createCGImage(scaledImage, from: scaledImage.extent) else {
+            throw SAM2Error.imageResizingFailed
         }
+
+        return resizedImage
+    }
 }
 
 enum SAM2Error: Error {
