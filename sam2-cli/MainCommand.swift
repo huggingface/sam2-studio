@@ -44,6 +44,9 @@ struct MainCommand: AsyncParsableCommand {
     @Option(name: [.long, .customShort("k")], help: "The output file name for the segmentation mask.")
     var mask: String? = nil
 
+    @Option(name: .shortAndLong, help: "The output file name for the unresized (but thresholded) mask.")
+    var rawMask: String? = nil
+
     @MainActor
     mutating func run() async throws {
         // TODO: specify directory with loadable .mlpackages instead
@@ -85,9 +88,12 @@ struct MainCommand: AsyncParsableCommand {
 
         let maskImage = CIImage(cgImage: cgImageMask)
 
-        // Write mask
+        // Write masks
         if let mask = mask {
             context.writePNG(maskImage, to: URL(filePath: mask))
+        }
+        if let rawMask = rawMask, let cgMask = sam.thresholdedMask {
+            context.writePNG(CIImage(cgImage: cgMask), to: URL(filePath: rawMask))
         }
 
         // Overlay over original and save
