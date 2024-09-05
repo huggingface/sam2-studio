@@ -32,11 +32,11 @@ struct MainCommand: AsyncParsableCommand {
     var input: String
 
     // TODO: multiple points
-    @Option(name: .shortAndLong, help: "Input coordinates in format 'x,y'. Coordinates are relative to the input image size.")
-    var point: CGPoint
+    @Option(name: .shortAndLong, parsing: .upToNextOption, help: "List of input coordinates in format 'x,y'. Coordinates are relative to the input image size. Separate multiple entries with spaces, but don't use spaces between the coordinates.")
+    var points: [CGPoint]
 
-    @Option(name: .shortAndLong, help: "Point type.")
-    var type: PointType
+    @Option(name: .shortAndLong, parsing: .upToNextOption, help: "Point types that correspond to the input points. Use as many as points, 0 for background and 1 for foreground.")
+    var types: [PointType]
 
     @Option(name: .shortAndLong, help: "The output PNG image file, showing the segmentation map overlaid on top of the original image.")
     var output: String
@@ -78,7 +78,9 @@ struct MainCommand: AsyncParsableCommand {
         print("Image encoding took \(duration.formatted(.units(allowed: [.seconds, .milliseconds])))")
 
         let startMask = clock.now
-        let pointSequence = [SAMPoint(coordinates:point, category:SAMCategory.foreground)]
+        let pointSequence = zip(points, types).map { point, type in
+            SAMPoint(coordinates:point, category:type.asCategory)
+        }
         try await sam.getPromptEncoding(from: pointSequence, with: inputImage.extent.size)
         guard let cgImageMask = try await sam.getMask(for: inputImage.extent.size) else {
             throw ExitCode(EXIT_FAILURE)
