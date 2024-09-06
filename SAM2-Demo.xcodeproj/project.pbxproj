@@ -6,19 +6,73 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		EBAB91282C88A05500F57B83 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = EBAB91272C88A05500F57B83 /* ArgumentParser */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EBAB911D2C889D5200F57B83 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		EBAB911F2C889D5200F57B83 /* sam2-cli */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "sam2-cli"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F136320F2C73AE78009DEF15 /* SAM2-Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SAM2-Demo.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		EBAB912A2C88A21E00F57B83 /* Exceptions for "SAM2-Demo" folder in "sam2-cli" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Common/CGImage+Extension.swift",
+				"Common/CGImage+RawBytes.swift",
+				Common/CoreImageExtensions.swift,
+				"Common/MLMultiArray+Image.swift",
+				Common/Models.swift,
+				Common/SAM2.swift,
+				sam2_small_image_encoder.mlpackage,
+				sam2_small_mask_decoder.mlpackage,
+				sam2_small_prompt_encoder.mlpackage,
+				sam2_tiny_image_encoder.mlpackage,
+				sam2_tiny_mask_decoder.mlpackage,
+				sam2_tiny_prompt_encoder.mlpackage,
+			);
+			target = EBAB911E2C889D5200F57B83 /* sam2-cli */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		EBAB91202C889D5200F57B83 /* sam2-cli */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "sam2-cli";
+			sourceTree = "<group>";
+		};
 		F13632112C73AE78009DEF15 /* SAM2-Demo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EBAB912A2C88A21E00F57B83 /* Exceptions for "SAM2-Demo" folder in "sam2-cli" target */,
+			);
 			path = "SAM2-Demo";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		EBAB911C2C889D5200F57B83 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EBAB91282C88A05500F57B83 /* ArgumentParser in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F136320C2C73AE78009DEF15 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				F13632112C73AE78009DEF15 /* SAM2-Demo */,
+				EBAB91202C889D5200F57B83 /* sam2-cli */,
 				F13632102C73AE78009DEF15 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				F136320F2C73AE78009DEF15 /* SAM2-Demo.app */,
+				EBAB911F2C889D5200F57B83 /* sam2-cli */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +104,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		EBAB911E2C889D5200F57B83 /* sam2-cli */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EBAB91252C889D5200F57B83 /* Build configuration list for PBXNativeTarget "sam2-cli" */;
+			buildPhases = (
+				EBAB911B2C889D5200F57B83 /* Sources */,
+				EBAB911C2C889D5200F57B83 /* Frameworks */,
+				EBAB911D2C889D5200F57B83 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				EBAB91202C889D5200F57B83 /* sam2-cli */,
+			);
+			name = "sam2-cli";
+			packageProductDependencies = (
+				EBAB91272C88A05500F57B83 /* ArgumentParser */,
+			);
+			productName = "sam2-cli";
+			productReference = EBAB911F2C889D5200F57B83 /* sam2-cli */;
+			productType = "com.apple.product-type.tool";
+		};
 		F136320E2C73AE78009DEF15 /* SAM2-Demo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F136321E2C73AE79009DEF15 /* Build configuration list for PBXNativeTarget "SAM2-Demo" */;
@@ -80,6 +159,9 @@
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					EBAB911E2C889D5200F57B83 = {
+						CreatedOnToolsVersion = 16.0;
+					};
 					F136320E2C73AE78009DEF15 = {
 						CreatedOnToolsVersion = 16.0;
 					};
@@ -94,12 +176,16 @@
 			);
 			mainGroup = F13632062C73AE77009DEF15;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EBAB91262C88A05500F57B83 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F13632102C73AE78009DEF15 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				F136320E2C73AE78009DEF15 /* SAM2-Demo */,
+				EBAB911E2C889D5200F57B83 /* sam2-cli */,
 			);
 		};
 /* End PBXProject section */
@@ -115,6 +201,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		EBAB911B2C889D5200F57B83 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F136320B2C73AE78009DEF15 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -125,6 +218,28 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		EBAB91232C889D5200F57B83 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = ZWDJQ796RU;
+				ENABLE_HARDENED_RUNTIME = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		EBAB91242C889D5200F57B83 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = ZWDJQ796RU;
+				ENABLE_HARDENED_RUNTIME = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		F136321C2C73AE79009DEF15 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -300,6 +415,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		EBAB91252C889D5200F57B83 /* Build configuration list for PBXNativeTarget "sam2-cli" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EBAB91232C889D5200F57B83 /* Debug */,
+				EBAB91242C889D5200F57B83 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F136320A2C73AE77009DEF15 /* Build configuration list for PBXProject "SAM2-Demo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -319,6 +443,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		EBAB91262C88A05500F57B83 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EBAB91272C88A05500F57B83 /* ArgumentParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EBAB91262C88A05500F57B83 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
+			productName = ArgumentParser;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F13632072C73AE77009DEF15 /* Project object */;
 }
