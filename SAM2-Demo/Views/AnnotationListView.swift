@@ -9,29 +9,25 @@ import SwiftUI
 
 struct AnnotationListView: View {
     
-    @State var isHidden: Bool = false
+    @Binding var segmentation: SAMSegmentation
     
     var body: some View {
         HStack {
-            RoundedRectangle(cornerRadius: 10)
-                .frame(width: 50, height: 50)
+            Image(nsImage: NSImage(cgImage: segmentation.image, size: NSSize(width: 45, height: 45)))
+                .mask(RoundedRectangle(cornerRadius: 10))
             
             VStack(alignment: .leading) {
-                Text("Object Name")
+                Text(segmentation.title)
                     .font(.headline)
-                Text("Frame")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+//                Text(segmentation.firstAppearance)
+//                    .font(.subheadline)
+//                    .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("", systemImage: isHidden ? "eye.slash.fill" :"eye.fill", action: {
-                isHidden.toggle()
+            Button("", systemImage: segmentation.isHidden ? "eye.slash.fill" :"eye.fill", action: {
+                segmentation.isHidden.toggle()
             })
             .buttonStyle(.borderless)
         }
     }
-}
-
-#Preview {
-    AnnotationListView()
 }

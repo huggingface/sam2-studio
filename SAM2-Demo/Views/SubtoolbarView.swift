@@ -10,7 +10,7 @@ import SwiftUI
 struct SubToolbar: View {
     @Binding var selectedPoints: [SAMPoint]
     @Binding var boundingBoxes: [SAMBox]
-    @Binding var segmentationImages: [CGImage]
+    @Binding var segmentationImages: [SAMSegmentation]
 
     var body: some View {
         if selectedPoints.count > 0 || boundingBoxes.count > 0 {

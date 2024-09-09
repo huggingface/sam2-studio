@@ -68,20 +68,17 @@ struct BoundingBoxPath: View {
 
 struct SegmentationOverlay: View {
     
-    @State var isHidden: Bool = false
-    let segmentationImage: CGImage?
+    @Binding var segmentationImage: SAMSegmentation
     let imageSize: CGSize
 
     var body: some View {
-        if let segmentationImage = segmentationImage {
-            let nsImage = NSImage(cgImage: segmentationImage, size: imageSize)
+            let nsImage = NSImage(cgImage: segmentationImage.image, size: imageSize)
             Image(nsImage: nsImage)
                 .resizable()
                 .scaledToFit()
                 .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(0.7)
-        }
+                .opacity(segmentationImage.isHidden ? 0:0.7)
     }
 }
 
@@ -89,7 +86,7 @@ struct ContentView: View {
     
     // ML Models
     @StateObject private var sam2 = SAM2()
-    @State private var segmentationImages: [CGImage] = []
+    @State private var segmentationImages: [SAMSegmentation] = []
     @State private var imageSize: CGSize = .zero
     
     // File importer
@@ -119,7 +116,7 @@ struct ContentView: View {
     var body: some View {
         
         NavigationSplitView(sidebar: {
-            LayerListView()
+            LayerListView(segmentationImages: $segmentationImages)
         }, detail: {
             ZStack {
                 VStack {

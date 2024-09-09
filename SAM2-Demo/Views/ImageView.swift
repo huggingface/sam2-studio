@@ -15,7 +15,7 @@ struct ImageView: View {
     @Binding var selectedPoints: [SAMPoint]
     @Binding var boundingBoxes: [SAMBox]
     @Binding var currentBox: SAMBox?
-    @Binding var segmentationImages: [CGImage]
+    @Binding var segmentationImages: [SAMSegmentation]
     @Binding var imageSize: CGSize
     @Binding var originalSize: NSSize?
     @ObservedObject var sam2: SAM2
@@ -43,7 +43,7 @@ struct ImageView: View {
                 BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
                 
                 if !segmentationImages.isEmpty {
-                    ForEach(segmentationImages, id: \.self) { segmentationImage in
+                    ForEach($segmentationImages, id: \.id) { segmentationImage in
                         SegmentationOverlay(segmentationImage: segmentationImage, imageSize: imageSize)
                     }
                 }
@@ -105,7 +105,9 @@ struct ImageView: View {
                 let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
                 if let cgImageMask {
                     DispatchQueue.main.async {
-                        self.segmentationImages.append(cgImageMask)
+                        let segmentationNumber = segmentationImages.count
+                        let segmentationOverlay = SAMSegmentation(image: cgImageMask, title: "Untitled \(segmentationNumber + 1)")
+                        self.segmentationImages.append(segmentationOverlay)
                     }
                 }
             } catch {

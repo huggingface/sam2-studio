@@ -88,6 +88,14 @@ extension SAMBox {
     }
 }
 
+struct SAMSegmentation: Hashable, Identifiable {
+    let id = UUID()
+    var image: CGImage
+    var title: String = ""
+    var firstAppearance: Int?
+    var isHidden: Bool = false
+}
+
 struct SAMTool: Hashable {
     let id: UUID = UUID()
     let name: String
