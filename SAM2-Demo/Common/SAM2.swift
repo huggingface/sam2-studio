@@ -13,16 +13,16 @@ import Combine
 @MainActor
 class SAM2: ObservableObject {
     
-    @Published var imageEncodings: sam2_small_image_encoderOutput?
-    @Published var promptEncodings: sam2_small_prompt_encoderOutput?
+    @Published var imageEncodings: sam2_tiny_image_encoderOutput?
+    @Published var promptEncodings: sam2_tiny_prompt_encoderOutput?
     @Published var thresholdedMask: CGImage?
 
     @Published private(set) var initializationTime: TimeInterval?
     @Published private(set) var initialized: Bool?
 
-    private var imageEncoderModel: sam2_small_image_encoder?
-    private var promptEncoderModel: sam2_small_prompt_encoder?
-    private var maskDecoderModel: sam2_small_mask_decoder?
+    private var imageEncoderModel: sam2_tiny_image_encoder?
+    private var promptEncoderModel: sam2_tiny_prompt_encoder?
+    private var maskDecoderModel: sam2_tiny_mask_decoder?
 
     // TODO: examine model inputs instead
     var inputSize: CGSize { CGSize(width: 1024, height: 1024) }
@@ -42,9 +42,9 @@ class SAM2: ObservableObject {
             let configuration = MLModelConfiguration()
             configuration.computeUnits = .cpuAndGPU
             let (imageEncoder, promptEncoder, maskDecoder) = try await Task.detached(priority: .userInitiated) {
-                let imageEncoder = try sam2_small_image_encoder(configuration: configuration)
-                let promptEncoder = try sam2_small_prompt_encoder(configuration: configuration)
-                let maskDecoder = try sam2_small_mask_decoder(configuration: configuration)
+                let imageEncoder = try sam2_tiny_image_encoder(configuration: configuration)
+                let promptEncoder = try sam2_tiny_prompt_encoder(configuration: configuration)
+                let maskDecoder = try sam2_tiny_mask_decoder(configuration: configuration)
                 return (imageEncoder, promptEncoder, maskDecoder)
             }.value
             

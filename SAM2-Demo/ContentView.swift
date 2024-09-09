@@ -13,36 +13,6 @@ let logger = Logger(
     category: "ContentView")
 
 
-struct SubToolbar: View {
-    @Binding var selectedPoints: [SAMPoint]
-    @Binding var boundingBoxes: [SAMBox]
-    @Binding var segmentationImage: CGImage?
-
-    var body: some View {
-        if selectedPoints.count > 0 || boundingBoxes.count > 0 {
-            ZStack {
-                Rectangle()
-                    .fill(.fill.secondary)
-                    .frame(height: 30)
-                
-                HStack {
-                    Spacer()
-                    Button("Reset", action: resetAll)
-                        .padding(.trailing, 5)
-                        .disabled(selectedPoints.isEmpty && boundingBoxes.isEmpty)
-                }
-            }
-            .transition(.move(edge: .top))
-        }
-    }
-
-    private func resetAll() {
-        selectedPoints.removeAll()
-        boundingBoxes.removeAll()
-        segmentationImage = nil
-    }
-}
-
 struct PointsOverlay: View {
     @Binding var selectedPoints: [SAMPoint]
     @Binding var selectedTool: SAMTool?
@@ -97,6 +67,8 @@ struct BoundingBoxPath: View {
 }
 
 struct SegmentationOverlay: View {
+    
+    @State var isHidden: Bool = false
     let segmentationImage: CGImage?
     let imageSize: CGSize
 
@@ -113,112 +85,11 @@ struct SegmentationOverlay: View {
     }
 }
 
-struct ImageView: View {
-    let image: NSImage
-    @Binding var currentScale: CGFloat
-    @Binding var selectedTool: SAMTool?
-    @Binding var selectedCategory: SAMCategory?
-    @Binding var selectedPoints: [SAMPoint]
-    @Binding var boundingBoxes: [SAMBox]
-    @Binding var currentBox: SAMBox?
-    @Binding var segmentationImage: CGImage?
-    @Binding var imageSize: CGSize
-    @Binding var originalSize: NSSize?
-    @ObservedObject var sam2: SAM2
-    @State private var error: Error?
-    
-    var pointSequence: [SAMPoint] {
-        boundingBoxes.flatMap { $0.points } + selectedPoints
-    }
-
-    var body: some View {
-        Image(nsImage: image)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .scaleEffect(currentScale)
-            .frame(maxWidth: 500, maxHeight: 500)
-            .onTapGesture(coordinateSpace: .local) { handleTap(at: $0) }
-            .gesture(boundingBoxGesture)
-            .onHover { changeCursorAppearance(is: $0) }
-            .background(GeometryReader { geometry in
-                Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
-            })
-            .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
-            .overlay {
-                PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool)
-                BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
-                SegmentationOverlay(segmentationImage: segmentationImage, imageSize: imageSize)
-            }
-    }
-    
-    private func changeCursorAppearance(is inside: Bool) {
-        if inside {
-            if selectedTool == pointTool {
-                NSCursor.pointingHand.push()
-            } else if selectedTool == boundingBoxTool {
-                NSCursor.crosshair.push()
-            }
-        } else {
-            NSCursor.pop()
-        }
-    }
-    
-    private var boundingBoxGesture: some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                guard selectedTool == boundingBoxTool else { return }
-                
-                if currentBox == nil {
-                    currentBox = SAMBox(startPoint: value.startLocation, endPoint: value.location, category: selectedCategory!)
-                } else {
-                    currentBox?.endPoint = value.location
-                }
-            }
-            .onEnded { value in
-                guard selectedTool == boundingBoxTool else { return }
-                
-                if let box = currentBox {
-                    boundingBoxes.append(box)
-                    currentBox = nil
-                    performForwardPass()
-                }
-            }
-    }
-    
-    private func handleTap(at location: CGPoint) {
-        if selectedTool == pointTool {
-            placePoint(at: location)
-            performForwardPass()
-        }
-    }
-    
-    private func placePoint(at coordinates: CGPoint) {
-        let samPoint = SAMPoint(coordinates: coordinates, category: selectedCategory!)
-        self.selectedPoints.append(samPoint)
-    }
-    
-    private func performForwardPass() {
-        Task {
-            do {
-                try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
-                let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
-                if let cgImageMask {
-                    DispatchQueue.main.async {
-                        self.segmentationImage = cgImageMask
-                    }
-                }
-            } catch {
-                self.error = error
-            }
-        }
-    }
-}
-
 struct ContentView: View {
     
     // ML Models
     @StateObject private var sam2 = SAM2()
-    @State private var segmentationImage: CGImage?
+    @State private var segmentationImages: [CGImage] = []
     @State private var imageSize: CGSize = .zero
     
     // File importer
@@ -246,19 +117,24 @@ struct ContentView: View {
     
     
     var body: some View {
-        ZStack {
-            VStack {
-                SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImage: $segmentationImage)
-                
-                ScrollView([.vertical, .horizontal]) {
-                    if let image = displayImage {
-                        ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImage: $segmentationImage, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
-                    } else {
-                        ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
+        
+        NavigationSplitView(sidebar: {
+            LayerListView()
+        }, detail: {
+            ZStack {
+                VStack {
+                    SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages)
+                    
+                    ScrollView([.vertical, .horizontal]) {
+                        if let image = displayImage {
+                            ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
+                        } else {
+                            ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
+                        }
                     }
                 }
             }
-        }
+        })
         .toolbar {
             // Tools
             ToolbarItemGroup(placement: .principal) {
