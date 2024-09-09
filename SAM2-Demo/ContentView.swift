@@ -79,6 +79,9 @@ struct SegmentationOverlay: View {
                 .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
                 .opacity(segmentationImage.isHidden ? 0:0.7)
+                .onAppear {
+                    print(imageSize)
+                }
     }
 }
 
@@ -191,9 +194,11 @@ struct ContentView: View {
 
         // MARK: - Image encoding
         .onChange(of: displayImage) {
+            segmentationImages = []
             Task {
                 if let displayImage, let pixelBuffer = displayImage.pixelBuffer(width: 1024, height: 1024) {
                     originalSize = displayImage.size
+                    print(originalSize)
                     do {
                         try await sam2.getImageEncoding(from: pixelBuffer)
                     } catch {

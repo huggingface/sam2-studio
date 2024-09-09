@@ -16,7 +16,7 @@ struct LayerListView: View {
             Section("Annotations List") {
                 ForEach($segmentationImages) { segmentationImage in
                     AnnotationListView(segmentation: segmentationImage)
-                        .padding(.horizontal)
+                        .padding(.horizontal, 5)
                 }
             }
         }

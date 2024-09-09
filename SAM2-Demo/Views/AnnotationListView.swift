@@ -13,7 +13,7 @@ struct AnnotationListView: View {
     
     var body: some View {
         HStack {
-            Image(nsImage: NSImage(cgImage: segmentation.image, size: NSSize(width: 45, height: 45)))
+            Image(nsImage: NSImage(cgImage: segmentation.image, size: NSSize(width: 35, height: 35)))
                 .mask(RoundedRectangle(cornerRadius: 10))
             
             VStack(alignment: .leading) {
@@ -28,6 +28,7 @@ struct AnnotationListView: View {
                 segmentation.isHidden.toggle()
             })
             .buttonStyle(.borderless)
+            .foregroundStyle(.primary)
         }
     }
 }

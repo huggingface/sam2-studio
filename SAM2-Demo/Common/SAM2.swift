@@ -138,6 +138,9 @@ class SAM2: ObservableObject {
             if let maskcgImage = float32Mask.cgImage(min: 0, max: 1, axes: (1, 2, 3)) {
                 self.thresholdedMask = maskcgImage
                 let resizedImage = try resizeCGImage(maskcgImage, to: original_size)
+                if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
+                    return transparentImage
+                }
                 return resizedImage
             }
         }
@@ -171,6 +174,56 @@ class SAM2: ObservableObject {
         }
 
         return resizedImage
+    }
+    
+    func makeBlackPixelsTransparent(in image: CGImage) -> CGImage? {
+        guard let dataProvider = image.dataProvider,
+              let data = dataProvider.data,
+              let ptr = CFDataGetBytePtr(data) else {
+            return nil
+        }
+        
+        let width = image.width
+        let height = image.height
+        let bytesPerRow = image.bytesPerRow
+        let bitsPerComponent = image.bitsPerComponent
+        let bitsPerPixel = image.bitsPerPixel
+        
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: bytesPerRow,
+            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+        
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        guard let pixelData = context.data else {
+            return nil
+        }
+        
+        let pixelBuffer = pixelData.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        
+        for y in 0..<height {
+            for x in 0..<width {
+                let offset = (y * bytesPerRow) + (x * 4)
+                
+                let red = pixelBuffer[offset]
+                let green = pixelBuffer[offset + 1]
+                let blue = pixelBuffer[offset + 2]
+                
+                if red == 0 && green == 0 && blue == 0 {
+                    pixelBuffer[offset + 3] = 0 // Set alpha to 0 for black pixels
+                }
+            }
+        }
+        
+        return context.makeImage()
     }
 }
 
