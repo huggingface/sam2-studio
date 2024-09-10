@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreML
 import CoreImage
+import CoreImage.CIFilterBuiltins
 import Combine
 
 @MainActor
@@ -123,7 +124,7 @@ class SAM2: ObservableObject {
         self.promptEncodings = encoding
     }
     
-    func getMask(for original_size: CGSize) async throws -> CGImage? {
+    func getMask(for original_size: CGSize) async throws -> CIImage? {
         guard let model = maskDecoderModel else {
             throw SAM2Error.modelNotLoaded
         }
@@ -152,11 +153,9 @@ class SAM2: ObservableObject {
 
             // Resize first, then threshold
             if let maskcgImage = low_featureMask.cgImage(min: minValue, max: maxValue) {
-                let resizedImage = try resizeCGImage(maskcgImage, to: original_size, applyingThreshold: Float(threshold))
-                if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
-                    return transparentImage
-                }
-                return resizedImage
+                let ciImage = CIImage(cgImage: maskcgImage, options: [.colorSpace: NSNull()])
+                let resizedImage = try resizeImage(ciImage, to: original_size, applyingThreshold: Float(threshold))
+                return makeBlackPixelsTransparent(in: resizedImage)
             }
         }
         return nil
@@ -177,70 +176,18 @@ class SAM2: ObservableObject {
         }
     }
     
-    private func resizeCGImage(_ image: CGImage, to size: CGSize, applyingThreshold threshold: Float = 1) throws -> CGImage {
-        let ciImage = CIImage(cgImage: image, options: [.colorSpace: NSNull()])
-        let scale = CGAffineTransform(scaleX: size.width / CGFloat(image.width),
-                                      y: size.height / CGFloat(image.height))
-        guard let scaledImage = ciImage.transformed(by: scale).applyingThreshold(threshold) else {
-            throw SAM2Error.imageResizingFailed
-        }
-
-        let context = CIContext()
-        guard let resizedImage = context.createCGImage(scaledImage, from: scaledImage.extent) else {
-            throw SAM2Error.imageResizingFailed
-        }
-
-        return resizedImage
+    private func resizeImage(_ image: CIImage, to size: CGSize, applyingThreshold threshold: Float = 1) throws -> CIImage? {
+        let scale = CGAffineTransform(scaleX: size.width / image.extent.width,
+                                      y: size.height / image.extent.height)
+        return image.transformed(by: scale).applyingThreshold(threshold)
     }
-    
-    func makeBlackPixelsTransparent(in image: CGImage) -> CGImage? {
-        guard let dataProvider = image.dataProvider,
-              let data = dataProvider.data,
-              let ptr = CFDataGetBytePtr(data) else {
-            return nil
-        }
-        
-        let width = image.width
-        let height = image.height
-        let bytesPerRow = image.bytesPerRow
-        let bitsPerComponent = image.bitsPerComponent
-        let bitsPerPixel = image.bitsPerPixel
-        
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: bitsPerComponent,
-            bytesPerRow: bytesPerRow,
-            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return nil
-        }
-        
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        
-        guard let pixelData = context.data else {
-            return nil
-        }
-        
-        let pixelBuffer = pixelData.bindMemory(to: UInt8.self, capacity: width * height * 4)
-        
-        for y in 0..<height {
-            for x in 0..<width {
-                let offset = (y * bytesPerRow) + (x * 4)
-                
-                let red = pixelBuffer[offset]
-                let green = pixelBuffer[offset + 1]
-                let blue = pixelBuffer[offset + 2]
-                
-                if red == 0 && green == 0 && blue == 0 {
-                    pixelBuffer[offset + 3] = 0 // Set alpha to 0 for black pixels
-                }
-            }
-        }
-        
-        return context.makeImage()
+
+    /// This is only appropriate for grayscale mask images (our case). CIColorMatrix can be used more generally.
+    func makeBlackPixelsTransparent(in image: CIImage?) -> CIImage? {
+        guard let image = image else { return nil }
+        let filter = CIFilter.maskToAlpha()
+        filter.inputImage = image
+        return filter.outputImage
     }
 }
 

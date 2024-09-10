@@ -79,13 +79,11 @@ struct MainCommand: AsyncParsableCommand {
             SAMPoint(coordinates:point, category:type.asCategory)
         }
         try await sam.getPromptEncoding(from: pointSequence, with: inputImage.extent.size)
-        guard let cgImageMask = try await sam.getMask(for: inputImage.extent.size) else {
+        guard let maskImage = try await sam.getMask(for: inputImage.extent.size) else {
             throw ExitCode(EXIT_FAILURE)
         }
         let maskDuration = clock.now - startMask
         print("Prompt encoding and mask generation took \(maskDuration.formatted(.units(allowed: [.seconds, .milliseconds])))")
-
-        let maskImage = CIImage(cgImage: cgImageMask)
 
         // Write masks
         if let mask = mask {

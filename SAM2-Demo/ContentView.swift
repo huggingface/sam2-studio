@@ -72,7 +72,7 @@ struct SegmentationOverlay: View {
     let imageSize: CGSize
 
     var body: some View {
-            let nsImage = NSImage(cgImage: segmentationImage.image, size: imageSize)
+        let nsImage = NSImage(cgImage: segmentationImage.cgImage, size: imageSize)
             Image(nsImage: nsImage)
                 .resizable()
                 .scaledToFit()
