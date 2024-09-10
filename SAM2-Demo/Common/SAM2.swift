@@ -92,7 +92,17 @@ class SAM2: ObservableObject {
         let encoding = try model.prediction(image: pixelBuffer)
         self.imageEncodings = encoding
     }
-    
+
+    func getImageEncoding(from url: URL) async throws {
+        guard let model = imageEncoderModel else {
+            throw SAM2Error.modelNotLoaded
+        }
+
+        let inputs = try sam2_small_image_encoderInput(imageAt: url)
+        let encoding = try await model.prediction(input: inputs)
+        self.imageEncodings = encoding
+    }
+
     func getPromptEncoding(from allPoints: [SAMPoint], with size: CGSize) async throws {
         guard let model = promptEncoderModel else {
             throw SAM2Error.modelNotLoaded
