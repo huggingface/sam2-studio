@@ -48,7 +48,7 @@ extension CIContext {
         guard status == kCVReturnSuccess else {
             return nil
         }
-        render(image, to: output)
+        render(image, to: output, bounds: image.extent, colorSpace: nil)
         return output
     }
 

@@ -5,7 +5,7 @@ import ImageIO
 import UniformTypeIdentifiers
 import Combine
 
-let context = CIContext()
+let context = CIContext(options: [.outputColorSpace: NSNull()])
 
 enum PointType: Int, ExpressibleByArgument {
     case background = 0
@@ -55,7 +55,7 @@ struct MainCommand: AsyncParsableCommand {
         let targetSize = sam.inputSize
 
         // Load the input image
-        guard let inputImage = CIImage(contentsOf: URL(filePath: input)) else {
+        guard let inputImage = CIImage(contentsOf: URL(filePath: input), options: [.colorSpace: NSNull()]) else {
             print("Failed to load image.")
             throw ExitCode(EXIT_FAILURE)
         }
