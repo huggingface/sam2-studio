@@ -136,9 +136,10 @@ class SAM2: ObservableObject {
            let dense_embedding = self.promptEncodings?.dense_embeddings {
             let output = try model.prediction(image_embedding: image_embedding, sparse_embedding: sparse_embedding, dense_embedding: dense_embedding, feats_s0: feats0, feats_s1: feats1)
 
-            // Extract only mask 3 to test
-            let low_featureMask = MLMultiArray(output.low_res_masksShapedArray[0, 2])
-            
+            // Extract best mask and ignore the others
+            let scores = output.scoresShapedArray.scalars
+            let argmax = scores.firstIndex(of: scores.max() ?? 0) ?? 0
+            let low_featureMask = MLMultiArray(output.low_res_masksShapedArray[0, argmax])
 
             // TODO: optimization
             // Preserve range for upsampling
