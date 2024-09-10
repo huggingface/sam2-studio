@@ -15,8 +15,10 @@ let logger = Logger(
 
 struct PointsOverlay: View {
     @Binding var selectedPoints: [SAMPoint]
+    @Binding var currentScale: CGFloat
+    @Binding var imageSize: CGSize
     @Binding var selectedTool: SAMTool?
-
+    
     var body: some View {
         ForEach(selectedPoints, id: \.self) { point in
             Image(systemName: "circle.fill")
@@ -24,7 +26,7 @@ struct PointsOverlay: View {
                 .scaledToFit()
                 .frame(width: 15, height: 15)
                 .foregroundStyle(point.category.color)
-                .position(x: point.coordinates.x, y: point.coordinates.y)
+                .position(computePosition(point: point))
                 .onTapGesture {
                     if selectedTool == eraserTool {
                         selectedPoints.removeAll { $0.id == point.id }
@@ -32,12 +34,16 @@ struct PointsOverlay: View {
                 }
         }
     }
+    
+    private func computePosition(point: SAMPoint) -> CGPoint {
+        point.denormalize(for: imageSize, at: currentScale)
+    }
 }
 
 struct BoundingBoxesOverlay: View {
     let boundingBoxes: [SAMBox]
     let currentBox: SAMBox?
-
+    
     var body: some View {
         ForEach(boundingBoxes) { box in
             BoundingBoxPath(box: box)
@@ -50,7 +56,7 @@ struct BoundingBoxesOverlay: View {
 
 struct BoundingBoxPath: View {
     let box: SAMBox
-
+    
     var body: some View {
         Path { path in
             path.move(to: box.startPoint)
@@ -69,19 +75,20 @@ struct BoundingBoxPath: View {
 struct SegmentationOverlay: View {
     
     @Binding var segmentationImage: SAMSegmentation
+    @Binding var currentScale: CGFloat
     let imageSize: CGSize
-
+    
     var body: some View {
-            let nsImage = NSImage(cgImage: segmentationImage.image, size: imageSize)
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFit()
-                .allowsHitTesting(false)
-                .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(segmentationImage.isHidden ? 0:0.7)
-                .onAppear {
-                    print(imageSize)
-                }
+        let nsImage = NSImage(cgImage: segmentationImage.image, size: imageSize)
+        Image(nsImage: nsImage)
+            .resizable()
+            .scaleEffect(currentScale)
+            .allowsHitTesting(false)
+            .frame(width: imageSize.width, height: imageSize.height)
+            .opacity(segmentationImage.isHidden ? 0:0.7)
+            .onAppear {
+                print(imageSize)
+            }
     }
 }
 
@@ -115,11 +122,10 @@ struct ContentView: View {
     @State private var originalSize: NSSize?
     @State private var currentScale: CGFloat = 1.0
     
-    
     var body: some View {
-        
         NavigationSplitView(sidebar: {
             LayerListView(segmentationImages: $segmentationImages)
+                .frame(minWidth: 200, idealWidth: 300, maxWidth: 400)
         }, detail: {
             ZStack {
                 VStack {
@@ -189,16 +195,15 @@ struct ContentView: View {
             if selectedCategory == nil {
                 selectedCategory = categories.first
             }
-           
+            
         }
-
+        
         // MARK: - Image encoding
         .onChange(of: displayImage) {
             segmentationImages = []
             Task {
                 if let displayImage, let pixelBuffer = displayImage.pixelBuffer(width: 1024, height: 1024) {
                     originalSize = displayImage.size
-                    print(originalSize)
                     do {
                         try await sam2.getImageEncoding(from: pixelBuffer)
                     } catch {
@@ -264,7 +269,7 @@ struct ContentView: View {
         }
     }
     
-
+    
 }
 
 struct SizePreferenceKey: PreferenceKey {

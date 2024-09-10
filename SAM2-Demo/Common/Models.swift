@@ -72,7 +72,32 @@ struct SAMCategory: Hashable {
 struct SAMPoint: Hashable {
     let id = UUID()
     let coordinates: CGPoint
+    let normalizedCoordinate: CGPoint
     let category: SAMCategory
+    
+    init(coordinates: CGPoint, imageSize: CGSize, currentScale: CGFloat, category: SAMCategory) {
+        self.coordinates = coordinates
+        print("Original coordinates: ", coordinates)
+        print("Image size: ", imageSize)
+        print("Current Scale: ", currentScale)
+        self.normalizedCoordinate = SAMPoint.normalize(coordinates, at: currentScale, for: imageSize)
+        print("Normalized Coord: ", self.normalizedCoordinate)
+        self.category = category
+    }
+    
+    static func normalize(_ coordinate: CGPoint, at currentScale: CGFloat, for size: CGSize) -> CGPoint {
+        return CGPoint(
+            x: (coordinate.x - size.width / 2) / (size.width / 2 * currentScale),
+            y: (coordinate.y - size.height / 2) / (size.height / 2 * currentScale)
+        )
+    }
+    
+    func denormalize(for size: CGSize, at currentScale: CGFloat) -> CGPoint {
+        return CGPoint(
+            x: normalizedCoordinate.x * (size.width / 2 * currentScale) + (size.width / 2),
+            y: normalizedCoordinate.y * (size.height / 2 * currentScale) + (size.height / 2)
+        )
+    }
 }
 
 struct SAMBox: Hashable, Identifiable {
@@ -84,7 +109,8 @@ struct SAMBox: Hashable, Identifiable {
 
 extension SAMBox {
     var points: [SAMPoint] {
-        [SAMPoint(coordinates: startPoint, category: .boxOrigin), SAMPoint(coordinates: endPoint, category: .boxEnd)]
+        [SAMPoint(coordinates: startPoint, imageSize: CGSize(width: 1024, height: 1024), currentScale: 1.0, category: .boxOrigin),
+         SAMPoint(coordinates: endPoint, imageSize: CGSize(width: 1024, height: 1024), currentScale: 1.0, category: .boxEnd)]
     }
 }
 

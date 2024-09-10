@@ -19,37 +19,50 @@ struct ImageView: View {
     @Binding var imageSize: CGSize
     @Binding var originalSize: NSSize?
     @ObservedObject var sam2: SAM2
+    
+    @State private var viewportSize: CGSize = .zero
     @State private var error: Error?
+
+    let zoomIncrement: CGFloat = 0.1
+    let maxZoom: CGFloat = 5.0
+    let minZoom: CGFloat = 0.5
     
     var pointSequence: [SAMPoint] {
         boundingBoxes.flatMap { $0.points } + selectedPoints
     }
 
     var body: some View {
-        Image(nsImage: image)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .scaleEffect(currentScale)
-            .frame(maxWidth: 500, maxHeight: 500)
-            .onTapGesture(coordinateSpace: .local) { handleTap(at: $0) }
-            .gesture(boundingBoxGesture)
-            .onHover { changeCursorAppearance(is: $0) }
-            .background(GeometryReader { geometry in
-                Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
-            })
-            .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
-            .overlay {
-                PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool)
-                BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
-                
-                if !segmentationImages.isEmpty {
-                    ForEach($segmentationImages, id: \.id) { segmentationImage in
-                        SegmentationOverlay(segmentationImage: segmentationImage, imageSize: imageSize)
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .scaleEffect(currentScale)
+                .frame(maxWidth: 500, maxHeight: 500)
+                .onAppear {
+                    NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { (event) -> NSEvent? in
+                        self.handleKeyEvent(event)
+                        return event
                     }
                 }
-                
-               
-            }
+                .onTapGesture(coordinateSpace: .local) { handleTap(at: $0) }
+                .gesture(boundingBoxGesture)
+                .onHover { changeCursorAppearance(is: $0) }
+                .background(GeometryReader { geometry in
+                    Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
+                })
+                .onPreferenceChange(SizePreferenceKey.self) { size in
+                    viewportSize = size
+                    imageSize = size
+                }
+                .overlay {
+                    PointsOverlay(selectedPoints: $selectedPoints, currentScale: $currentScale, imageSize: $imageSize, selectedTool: $selectedTool)
+                    BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
+                    
+                    if !segmentationImages.isEmpty {
+                        ForEach($segmentationImages, id: \.id) { segmentationImage in
+                            SegmentationOverlay(segmentationImage: segmentationImage, currentScale: $currentScale, imageSize: imageSize)
+                        }
+                    }
+        }
     }
     
     private func changeCursorAppearance(is inside: Bool) {
@@ -94,8 +107,43 @@ struct ImageView: View {
     }
     
     private func placePoint(at coordinates: CGPoint) {
-        let samPoint = SAMPoint(coordinates: coordinates, category: selectedCategory!)
-        self.selectedPoints.append(samPoint)
+        self.selectedPoints.append(SAMPoint(coordinates: coordinates, imageSize: imageSize, currentScale: currentScale, category: selectedCategory!))
+    }
+    
+    private func handleKeyEvent(_ event: NSEvent) {
+        switch event.modifierFlags.intersection(.deviceIndependentFlagsMask) {
+        case [.command]:
+            switch event.keyCode {
+            case 24: // Command + '+'
+                zoomIn()
+            case 27: // Command + '-'
+                zoomOut()
+            case 49: // Command + Space
+                resetZoom()
+            default:
+                break
+            }
+        default:
+            break
+        }
+    }
+    
+    private func zoomIn() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentScale = min(currentScale + zoomIncrement, maxZoom)
+        }
+    }
+
+    private func zoomOut() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentScale = max(currentScale - zoomIncrement, minZoom)
+        }
+    }
+
+    private func resetZoom() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentScale = 1.0
+        }
     }
     
     private func performForwardPass() {
