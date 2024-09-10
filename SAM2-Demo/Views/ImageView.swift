@@ -95,6 +95,7 @@ struct ImageView: View {
     
     private func placePoint(at coordinates: CGPoint) {
         let samPoint = SAMPoint(coordinates: coordinates, category: selectedCategory!)
+        _ = self.selectedPoints.popLast()
         self.selectedPoints.append(samPoint)
     }
     

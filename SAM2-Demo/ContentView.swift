@@ -245,7 +245,7 @@ struct ContentView: View {
         }
         
         // MARK: - File exporter
-                      .fileExporter(
+        .fileExporter(
                         isPresented: $exportMaskToPNG,
                         document: DirectoryDocument(initialContentType: .folder),
                         contentType: .folder,

@@ -10,6 +10,7 @@ import CoreML
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import Combine
+import UniformTypeIdentifiers
 
 @MainActor
 class SAM2: ObservableObject {
@@ -210,7 +211,7 @@ enum SAM2Error: Error {
 }
 
 @discardableResult func writeCGImage(_ image: CGImage, to destinationURL: URL) -> Bool {
-    guard let destination = CGImageDestinationCreateWithURL(destinationURL as CFURL, kUTTypePNG, 1, nil) else { return false }
+    guard let destination = CGImageDestinationCreateWithURL(destinationURL as CFURL, UTType.png.identifier as CFString, 1, nil) else { return false }
     CGImageDestinationAddImage(destination, image, nil)
     return CGImageDestinationFinalize(destination)
 }
