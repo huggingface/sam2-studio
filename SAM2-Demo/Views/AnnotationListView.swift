@@ -14,7 +14,7 @@ struct AnnotationListView: View {
     var body: some View {
         HStack {
             Image(nsImage: NSImage(cgImage: segmentation.cgImage, size: NSSize(width: 35, height: 35)))
-                .background(.secondary)
+                .background(.quinary)
                 .mask(RoundedRectangle(cornerRadius: 10))
             
             VStack(alignment: .leading) {

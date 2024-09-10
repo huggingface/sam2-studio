@@ -97,6 +97,11 @@ struct ContentView: View {
     @State private var isImportingFromFiles: Bool = false
     @State private var displayImage: NSImage?
     
+    // Mask exporter
+    @State private var exportURL: URL?
+    @State private var exportMaskToPNG: Bool = false
+    @State private var selectedSegmentations = Set<SAMSegmentation.ID>()
+    
     // Photos Picker
     @State private var isImportingFromPhotos: Bool = false
     @State private var selectedItem: PhotosPickerItem?
@@ -119,7 +124,7 @@ struct ContentView: View {
     var body: some View {
         
         NavigationSplitView(sidebar: {
-            LayerListView(segmentationImages: $segmentationImages)
+            LayerListView(segmentationImages: $segmentationImages, exportMaskToPNG: $exportMaskToPNG, selectedSegmentations: $selectedSegmentations)
         }, detail: {
             ZStack {
                 VStack {
@@ -129,7 +134,7 @@ struct ContentView: View {
                         if let image = displayImage {
                             ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
                         } else {
-                            ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please use the '+' button to import a file."))
+                            ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started,"))
                         }
                     }
                 }
@@ -184,7 +189,7 @@ struct ContentView: View {
         
         .onAppear {
             if selectedTool == nil {
-                selectedTool = tools.first
+                selectedTool = tools[1]
             }
             if selectedCategory == nil {
                 selectedCategory = categories.first
@@ -198,7 +203,6 @@ struct ContentView: View {
             Task {
                 if let displayImage, let pixelBuffer = displayImage.pixelBuffer(width: 1024, height: 1024) {
                     originalSize = displayImage.size
-                    print(originalSize)
                     do {
                         try await sam2.getImageEncoding(from: pixelBuffer)
                     } catch {
@@ -207,6 +211,7 @@ struct ContentView: View {
                 }
             }
         }
+        
         
         // MARK: - Photos Importer
         .photosPicker(isPresented: $isImportingFromPhotos, selection: $selectedItem, matching: .any(of: [.images, .screenshots, .livePhotos]))
@@ -238,6 +243,22 @@ struct ContentView: View {
                 self.error = error
             }
         }
+        
+        // MARK: - File exporter
+                      .fileExporter(
+                        isPresented: $exportMaskToPNG,
+                        document: DirectoryDocument(initialContentType: .folder),
+                        contentType: .folder,
+                        defaultFilename: "Segmentations"
+                      ) { result in
+                          if case .success(let url) = result {
+                              exportURL = url
+                              let selectedToExport = segmentationImages.filter { segmentation in
+                                  selectedSegmentations.contains(segmentation.id)
+                              }
+                              exportSegmentations(selectedToExport, to: url)
+                          }
+                      }
     }
     
     // MARK: - Private Methods
@@ -261,6 +282,30 @@ struct ContentView: View {
         } catch {
             logger.error("Error loading image data: \(error.localizedDescription)")
             self.error = error
+        }
+    }
+    
+    func exportSegmentations(_ segmentations: [SAMSegmentation], to directory: URL) {
+        let fileManager = FileManager.default
+        
+        do {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
+            
+            for (index, segmentation) in segmentations.enumerated() {
+                let filename = "segmentation_\(index + 1).png"
+                let fileURL = directory.appendingPathComponent(filename)
+                
+                if let destination = CGImageDestinationCreateWithURL(fileURL as CFURL, UTType.png.identifier as CFString, 1, nil) {
+                    CGImageDestinationAddImage(destination, segmentation.cgImage, nil)
+                    if CGImageDestinationFinalize(destination) {
+                        print("Saved segmentation \(index + 1) to \(fileURL.path)")
+                    } else {
+                        print("Failed to save segmentation \(index + 1)")
+                    }
+                }
+            }
+        } catch {
+            print("Error creating directory: \(error.localizedDescription)")
         }
     }
     

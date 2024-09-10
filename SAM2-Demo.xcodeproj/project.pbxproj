@@ -34,6 +34,7 @@
 				"Common/CGImage+Extension.swift",
 				"Common/CGImage+RawBytes.swift",
 				Common/CoreImageExtensions.swift,
+				Common/DirectoryDocument.swift,
 				"Common/MLMultiArray+Image.swift",
 				Common/Models.swift,
 				Common/SAM2.swift,
