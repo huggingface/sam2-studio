@@ -15,7 +15,6 @@ class SAM2: ObservableObject {
     
     @Published var imageEncodings: sam2_tiny_image_encoderOutput?
     @Published var promptEncodings: sam2_tiny_prompt_encoderOutput?
-    @Published var thresholdedMask: CGImage?
 
     @Published private(set) var initializationTime: TimeInterval?
     @Published private(set) var initialized: Bool?
@@ -153,8 +152,6 @@ class SAM2: ObservableObject {
 
             // Resize first, then threshold
             if let maskcgImage = low_featureMask.cgImage(min: minValue, max: maxValue) {
-                // TODO: this should be a thresholdedMask I guess
-                self.thresholdedMask = maskcgImage
                 let resizedImage = try resizeCGImage(maskcgImage, to: original_size, applyingThreshold: Float(threshold))
                 if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
                     return transparentImage
