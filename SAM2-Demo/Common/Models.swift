@@ -77,18 +77,18 @@ struct SAMPoint: Hashable {
     
     init(coordinates: CGPoint, imageSize: CGSize, currentScale: CGFloat, category: SAMCategory) {
         self.coordinates = coordinates
-        self.normalizedCoordinate = SAMPoint.normalize(coordinates, at: currentScale, for: imageSize)
+        self.normalizedCoordinate = SAMPoint.normalize(coordinates, currentScale, imageSize)
         self.category = category
     }
     
-    static func normalize(_ coordinate: CGPoint, at currentScale: CGFloat, for size: CGSize) -> CGPoint {
+    static func normalize(_ coordinate: CGPoint, _ currentScale: CGFloat, _ size: CGSize) -> CGPoint {
         return CGPoint(
             x: (coordinate.x - size.width / 2) / (size.width / 2 * currentScale),
             y: (coordinate.y - size.height / 2) / (size.height / 2 * currentScale)
         )
     }
     
-    func denormalize(for size: CGSize, at currentScale: CGFloat) -> CGPoint {
+    func denormalize(_ size: CGSize, _ currentScale: CGFloat) -> CGPoint {
         return CGPoint(
             x: normalizedCoordinate.x * (size.width / 2 * currentScale) + (size.width / 2),
             y: normalizedCoordinate.y * (size.height / 2 * currentScale) + (size.height / 2)
@@ -98,15 +98,18 @@ struct SAMPoint: Hashable {
 
 struct SAMBox: Hashable, Identifiable {
     let id = UUID()
-    var startPoint: CGPoint
-    var endPoint: CGPoint
+    var startPoint: SAMPoint
+    var endPoint: SAMPoint
     let category: SAMCategory
-}
-
-extension SAMBox {
-    var points: [SAMPoint] {
-        [SAMPoint(coordinates: startPoint, imageSize: CGSize(width: 1024, height: 1024), currentScale: 1.0, category: .boxOrigin),
-         SAMPoint(coordinates: endPoint, imageSize: CGSize(width: 1024, height: 1024), currentScale: 1.0, category: .boxEnd)]
+    
+    func denormalize(size: CGSize, currentScale: CGFloat) -> (CGPoint, CGPoint) {
+        let denormalizedStart = startPoint.denormalize(size, currentScale)
+        let denormalizedEnd = endPoint.denormalize(size, currentScale)
+        return (denormalizedStart, denormalizedEnd)
+    }
+    
+    func points() -> [SAMPoint] {
+        [startPoint, endPoint]
     }
 }
 

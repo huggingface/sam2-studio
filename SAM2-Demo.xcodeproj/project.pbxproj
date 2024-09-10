@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -28,7 +28,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EBAB912A2C88A21E00F57B83 /* Exceptions for "SAM2-Demo" folder in "sam2-cli" target */ = {
+		EBAB912A2C88A21E00F57B83 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"Common/CGImage+Extension.swift",
@@ -46,19 +46,8 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		EBAB91202C889D5200F57B83 /* sam2-cli */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "sam2-cli";
-			sourceTree = "<group>";
-		};
-		F13632112C73AE78009DEF15 /* SAM2-Demo */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				EBAB912A2C88A21E00F57B83 /* Exceptions for "SAM2-Demo" folder in "sam2-cli" target */,
-			);
-			path = "SAM2-Demo";
-			sourceTree = "<group>";
-		};
+		EBAB91202C889D5200F57B83 /* sam2-cli */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "sam2-cli"; sourceTree = "<group>"; };
+		F13632112C73AE78009DEF15 /* SAM2-Demo */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (EBAB912A2C88A21E00F57B83 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "SAM2-Demo"; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -165,6 +154,7 @@
 				};
 			};
 			buildConfigurationList = F136320A2C73AE77009DEF15 /* Build configuration list for PBXProject "SAM2-Demo" */;
+			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -176,7 +166,6 @@
 			packageReferences = (
 				EBAB91262C88A05500F57B83 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
 			);
-			preferredProjectObjectVersion = 77;
 			productRefGroup = F13632102C73AE78009DEF15 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -365,7 +354,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SAM2-Demo/Preview Content\"";
-				DEVELOPMENT_TEAM = AG2QJ56KLX;
+				DEVELOPMENT_TEAM = U2AVBSL4ZQ;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -375,7 +364,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "cyrilzakka.SAM2-Demo";
+				PRODUCT_BUNDLE_IDENTIFIER = "fleetwood.SAM2-Demo";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -392,7 +381,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SAM2-Demo/Preview Content\"";
-				DEVELOPMENT_TEAM = AG2QJ56KLX;
+				DEVELOPMENT_TEAM = U2AVBSL4ZQ;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -402,7 +391,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "cyrilzakka.SAM2-Demo";
+				PRODUCT_BUNDLE_IDENTIFIER = "fleetwood.SAM2-Demo";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

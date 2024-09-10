@@ -28,7 +28,7 @@ struct ImageView: View {
     let minZoom: CGFloat = 0.5
     
     var pointSequence: [SAMPoint] {
-        boundingBoxes.flatMap { $0.points } + selectedPoints
+        boundingBoxes.flatMap { $0.points() } + selectedPoints
     }
 
     var body: some View {
@@ -55,7 +55,7 @@ struct ImageView: View {
                 }
                 .overlay {
                     PointsOverlay(selectedPoints: $selectedPoints, currentScale: $currentScale, imageSize: $imageSize, selectedTool: $selectedTool)
-                    BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
+                    BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentScale: $currentScale, imageSize: $imageSize, currentBox: currentBox)
                     
                     if !segmentationImages.isEmpty {
                         ForEach($segmentationImages, id: \.id) { segmentationImage in
@@ -82,10 +82,13 @@ struct ImageView: View {
             .onChanged { value in
                 guard selectedTool == boundingBoxTool else { return }
                 
+                let endPoint = SAMPoint(coordinates: value.location, imageSize: imageSize, currentScale: currentScale, category: selectedCategory!)
+                
                 if currentBox == nil {
-                    currentBox = SAMBox(startPoint: value.startLocation, endPoint: value.location, category: selectedCategory!)
+                    let startPoint = SAMPoint(coordinates: value.startLocation, imageSize: imageSize, currentScale: currentScale, category: selectedCategory!)
+                    currentBox = SAMBox(startPoint: startPoint, endPoint: endPoint, category: selectedCategory!)
                 } else {
-                    currentBox?.endPoint = value.location
+                    currentBox?.endPoint = endPoint
                 }
             }
             .onEnded { value in
@@ -118,7 +121,7 @@ struct ImageView: View {
                 zoomIn()
             case 27: // Command + '-'
                 zoomOut()
-            case 49: // Command + Space
+            case 29: // Command + '0'
                 resetZoom()
             default:
                 break
@@ -129,19 +132,19 @@ struct ImageView: View {
     }
     
     private func zoomIn() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.easeInOut(duration: 0.05)) {
             currentScale = min(currentScale + zoomIncrement, maxZoom)
         }
     }
 
     private func zoomOut() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.easeInOut(duration: 0.05)) {
             currentScale = max(currentScale - zoomIncrement, minZoom)
         }
     }
 
     private func resetZoom() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.easeInOut(duration: 0.05)) {
             currentScale = 1.0
         }
     }

@@ -18,7 +18,7 @@ struct PointsOverlay: View {
     @Binding var currentScale: CGFloat
     @Binding var imageSize: CGSize
     @Binding var selectedTool: SAMTool?
-    
+
     var body: some View {
         ForEach(selectedPoints, id: \.self) { point in
             Image(systemName: "circle.fill")
@@ -26,7 +26,7 @@ struct PointsOverlay: View {
                 .scaledToFit()
                 .frame(width: 15, height: 15)
                 .foregroundStyle(point.category.color)
-                .position(point.denormalize(for: imageSize, at: currentScale))
+                .position(point.denormalize(imageSize, currentScale))
                 .onTapGesture {
                     if selectedTool == eraserTool {
                         selectedPoints.removeAll { $0.id == point.id }
@@ -38,27 +38,33 @@ struct PointsOverlay: View {
 
 struct BoundingBoxesOverlay: View {
     let boundingBoxes: [SAMBox]
+    @Binding var currentScale: CGFloat
+    @Binding var imageSize: CGSize
     let currentBox: SAMBox?
-    
+
+
     var body: some View {
         ForEach(boundingBoxes) { box in
-            BoundingBoxPath(box: box)
+            BoundingBoxPath(box: box, currentScale: currentScale, imageSize: imageSize)
         }
         if let currentBox = currentBox {
-            BoundingBoxPath(box: currentBox)
+            BoundingBoxPath(box: currentBox, currentScale: currentScale, imageSize: imageSize)
         }
     }
 }
 
 struct BoundingBoxPath: View {
     let box: SAMBox
-    
+    let currentScale: CGFloat
+    let imageSize: CGSize
+
     var body: some View {
         Path { path in
-            path.move(to: box.startPoint)
-            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y))
-            path.addLine(to: box.endPoint)
-            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
+            let (denormStart, denormEnd) = box.denormalize(size: imageSize, currentScale: currentScale)
+            path.move(to: denormStart)
+            path.addLine(to: CGPoint(x: denormEnd.x, y: denormStart.y))
+            path.addLine(to: denormEnd)
+            path.addLine(to: CGPoint(x: denormStart.x, y: denormEnd.y))
             path.closeSubpath()
         }
         .stroke(
@@ -69,11 +75,11 @@ struct BoundingBoxPath: View {
 }
 
 struct SegmentationOverlay: View {
-    
+
     @Binding var segmentationImage: SAMSegmentation
     @Binding var currentScale: CGFloat
     let imageSize: CGSize
-    
+
     var body: some View {
         let nsImage = NSImage(cgImage: segmentationImage.image, size: imageSize)
         Image(nsImage: nsImage)
@@ -89,27 +95,27 @@ struct SegmentationOverlay: View {
 }
 
 struct ContentView: View {
-    
+
     // ML Models
     @StateObject private var sam2 = SAM2()
     @State private var segmentationImages: [SAMSegmentation] = []
     @State private var imageSize: CGSize = .zero
-    
+
     // File importer
     @State private var imageURL: URL?
     @State private var isImportingFromFiles: Bool = false
     @State private var displayImage: NSImage?
-    
+
     // Photos Picker
     @State private var isImportingFromPhotos: Bool = false
     @State private var selectedItem: PhotosPickerItem?
-    
+
     @State private var error: Error?
-    
+
     // ML Model Properties
     var tools: [SAMTool] = [normalTool, pointTool, boundingBoxTool, eraserTool]
     var categories: [SAMCategory] = [.foreground, .background]
-    
+
     @State private var selectedTool: SAMTool?
     @State private var selectedCategory: SAMCategory?
     @State private var selectedPoints: [SAMPoint] = []
@@ -117,7 +123,7 @@ struct ContentView: View {
     @State private var currentBox: SAMBox?
     @State private var originalSize: NSSize?
     @State private var currentScale: CGFloat = 1.0
-    
+
     var body: some View {
         NavigationSplitView(sidebar: {
             LayerListView(segmentationImages: $segmentationImages)
@@ -126,7 +132,7 @@ struct ContentView: View {
             ZStack {
                 VStack {
                     SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages)
-                    
+
                     ScrollView([.vertical, .horizontal]) {
                         if let image = displayImage {
                             ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
@@ -150,7 +156,7 @@ struct ContentView: View {
                     Label("Tools", systemImage: "pencil.and.ruler")
                 })
                 .pickerStyle(.menu)
-                
+
                 Picker(selection: $selectedCategory, content: {
                     ForEach(categories, id: \.self) { cat in
                         Label(cat.name, systemImage: cat.iconName)
@@ -161,9 +167,9 @@ struct ContentView: View {
                     Label("Tools", systemImage: "pencil.and.ruler")
                 })
                 .pickerStyle(.menu)
-                
+
             }
-            
+
             // Import
             ToolbarItemGroup {
                 Menu {
@@ -172,7 +178,7 @@ struct ContentView: View {
                     }, label: {
                         Label("From Photos", systemImage: "photo.on.rectangle.angled.fill")
                     })
-                    
+
                     Button(action: {
                         isImportingFromFiles = true
                     }, label: {
@@ -183,7 +189,7 @@ struct ContentView: View {
                 }
             }
         }
-        
+
         .onAppear {
             if selectedTool == nil {
                 selectedTool = tools.first
@@ -191,9 +197,9 @@ struct ContentView: View {
             if selectedCategory == nil {
                 selectedCategory = categories.first
             }
-            
+
         }
-        
+
         // MARK: - Image encoding
         .onChange(of: displayImage) {
             segmentationImages = []
@@ -208,7 +214,7 @@ struct ContentView: View {
                 }
             }
         }
-        
+
         // MARK: - Photos Importer
         .photosPicker(isPresented: $isImportingFromPhotos, selection: $selectedItem, matching: .any(of: [.images, .screenshots, .livePhotos]))
         .onChange(of: selectedItem) {
@@ -224,7 +230,7 @@ struct ContentView: View {
                 }
             }
         }
-        
+
         // MARK: - File Importer
         .fileImporter(isPresented: $isImportingFromFiles,
                       allowedContentTypes: [.image]) { result in
@@ -240,16 +246,16 @@ struct ContentView: View {
             }
         }
     }
-    
+
     // MARK: - Private Methods
     private func loadImage(from url: URL) {
         guard url.startAccessingSecurityScopedResource() else {
             logger.error("Failed to access the file. Security-scoped resource access denied.")
             return
         }
-        
+
         defer { url.stopAccessingSecurityScopedResource() }
-        
+
         do {
             let imageData = try Data(contentsOf: url)
             if let image = NSImage(data: imageData) {
@@ -264,8 +270,8 @@ struct ContentView: View {
             self.error = error
         }
     }
-    
-    
+
+
 }
 
 struct SizePreferenceKey: PreferenceKey {
