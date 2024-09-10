@@ -5,7 +5,7 @@ import ImageIO
 import UniformTypeIdentifiers
 import Combine
 
-let context = CIContext()
+let context = CIContext(options: [.outputColorSpace: NSNull()])
 
 enum PointType: Int, ExpressibleByArgument {
     case background = 0
@@ -44,9 +44,6 @@ struct MainCommand: AsyncParsableCommand {
     @Option(name: [.long, .customShort("k")], help: "The output file name for the segmentation mask.")
     var mask: String? = nil
 
-    @Option(name: .shortAndLong, help: "The output file name for the unresized (but thresholded) mask.")
-    var rawMask: String? = nil
-
     @MainActor
     mutating func run() async throws {
         // TODO: specify directory with loadable .mlpackages instead
@@ -55,7 +52,7 @@ struct MainCommand: AsyncParsableCommand {
         let targetSize = sam.inputSize
 
         // Load the input image
-        guard let inputImage = CIImage(contentsOf: URL(filePath: input)) else {
+        guard let inputImage = CIImage(contentsOf: URL(filePath: input), options: [.colorSpace: NSNull()]) else {
             print("Failed to load image.")
             throw ExitCode(EXIT_FAILURE)
         }
@@ -82,24 +79,19 @@ struct MainCommand: AsyncParsableCommand {
             SAMPoint(coordinates:point, category:type.asCategory)
         }
         try await sam.getPromptEncoding(from: pointSequence, with: inputImage.extent.size)
-        guard let cgImageMask = try await sam.getMask(for: inputImage.extent.size) else {
+        guard let maskImage = try await sam.getMask(for: inputImage.extent.size) else {
             throw ExitCode(EXIT_FAILURE)
         }
         let maskDuration = clock.now - startMask
         print("Prompt encoding and mask generation took \(maskDuration.formatted(.units(allowed: [.seconds, .milliseconds])))")
 
-        let maskImage = CIImage(cgImage: cgImageMask)
-
         // Write masks
         if let mask = mask {
             context.writePNG(maskImage, to: URL(filePath: mask))
         }
-        if let rawMask = rawMask, let cgMask = sam.thresholdedMask {
-            context.writePNG(CIImage(cgImage: cgMask), to: URL(filePath: rawMask))
-        }
 
         // Overlay over original and save
-        guard let outputImage = maskImage.withAlpha(0.5)?.composited(over: inputImage) else {
+        guard let outputImage = maskImage.withAlpha(0.6)?.composited(over: inputImage) else {
             print("Failed to blend mask.")
             throw ExitCode(EXIT_FAILURE)
         }

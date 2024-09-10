@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreML
 import CoreImage
+import CoreImage.CIFilterBuiltins
 import Combine
 
 @MainActor
@@ -15,7 +16,6 @@ class SAM2: ObservableObject {
     
     @Published var imageEncodings: sam2_tiny_image_encoderOutput?
     @Published var promptEncodings: sam2_tiny_prompt_encoderOutput?
-    @Published var thresholdedMask: CGImage?
 
     @Published private(set) var initializationTime: TimeInterval?
     @Published private(set) var initialized: Bool?
@@ -92,7 +92,17 @@ class SAM2: ObservableObject {
         let encoding = try model.prediction(image: pixelBuffer)
         self.imageEncodings = encoding
     }
-    
+
+    func getImageEncoding(from url: URL) async throws {
+        guard let model = imageEncoderModel else {
+            throw SAM2Error.modelNotLoaded
+        }
+
+        let inputs = try sam2_tiny_image_encoderInput(imageAt: url)
+        let encoding = try await model.prediction(input: inputs)
+        self.imageEncodings = encoding
+    }
+
     func getPromptEncoding(from allPoints: [SAMPoint], with size: CGSize) async throws {
         guard let model = promptEncoderModel else {
             throw SAM2Error.modelNotLoaded
@@ -114,7 +124,7 @@ class SAM2: ObservableObject {
         self.promptEncodings = encoding
     }
     
-    func getMask(for original_size: CGSize) async throws -> CGImage? {
+    func getMask(for original_size: CGSize) async throws -> CIImage? {
         guard let model = maskDecoderModel else {
             throw SAM2Error.modelNotLoaded
         }
@@ -125,23 +135,28 @@ class SAM2: ObservableObject {
            let sparse_embedding = self.promptEncodings?.sparse_embeddings,
            let dense_embedding = self.promptEncodings?.dense_embeddings {
             let output = try model.prediction(image_embedding: image_embedding, sparse_embedding: sparse_embedding, dense_embedding: dense_embedding, feats_s0: feats0, feats_s1: feats1)
-            let low_featureMask = output.low_res_masks
-            
-            
-            // Cast low_featureMask from float16 to float32 and threshold
-            let float32Mask = try! MLMultiArray(shape: low_featureMask.shape, dataType: .float32)
 
-            // TODO: optimization (threshold, resizing)
+            // Extract best mask and ignore the others
+            let scores = output.scoresShapedArray.scalars
+            let argmax = scores.firstIndex(of: scores.max() ?? 0) ?? 0
+            let low_featureMask = MLMultiArray(output.low_res_masksShapedArray[0, argmax])
+
+            // TODO: optimization
+            // Preserve range for upsampling
+            var minValue: Double = 9999
+            var maxValue: Double = -9999
             for i in 0..<low_featureMask.count {
-                float32Mask[i] = low_featureMask[i].floatValue > 0.0 ? 1.0 : 0.0
+                let v = low_featureMask[i].doubleValue
+                if v > maxValue { maxValue = v }
+                if v < minValue { minValue = v }
             }
-            if let maskcgImage = float32Mask.cgImage(min: 0, max: 1, axes: (1, 2, 3)) {
-                self.thresholdedMask = maskcgImage
-                let resizedImage = try resizeCGImage(maskcgImage, to: original_size)
-                if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
-                    return transparentImage
-                }
-                return resizedImage
+            let threshold = -minValue / (maxValue - minValue)
+
+            // Resize first, then threshold
+            if let maskcgImage = low_featureMask.cgImage(min: minValue, max: maxValue) {
+                let ciImage = CIImage(cgImage: maskcgImage, options: [.colorSpace: NSNull()])
+                let resizedImage = try resizeImage(ciImage, to: original_size, applyingThreshold: Float(threshold))
+                return resizedImage?.maskedToAlpha()?.samTinted()
             }
         }
         return nil
@@ -162,68 +177,29 @@ class SAM2: ObservableObject {
         }
     }
     
-    private func resizeCGImage(_ image: CGImage, to size: CGSize) throws -> CGImage {
-        let ciImage = CIImage(cgImage: image)
-        let scale = CGAffineTransform(scaleX: size.width / CGFloat(image.width),
-                                      y: size.height / CGFloat(image.height))
-        let scaledImage = ciImage.transformed(by: scale)
-
-        let context = CIContext(options: nil)
-        guard let resizedImage = context.createCGImage(scaledImage, from: scaledImage.extent) else {
-            throw SAM2Error.imageResizingFailed
-        }
-
-        return resizedImage
+    private func resizeImage(_ image: CIImage, to size: CGSize, applyingThreshold threshold: Float = 1) throws -> CIImage? {
+        let scale = CGAffineTransform(scaleX: size.width / image.extent.width,
+                                      y: size.height / image.extent.height)
+        return image.transformed(by: scale).applyingThreshold(threshold)
     }
-    
-    func makeBlackPixelsTransparent(in image: CGImage) -> CGImage? {
-        guard let dataProvider = image.dataProvider,
-              let data = dataProvider.data,
-              let ptr = CFDataGetBytePtr(data) else {
-            return nil
-        }
-        
-        let width = image.width
-        let height = image.height
-        let bytesPerRow = image.bytesPerRow
-        let bitsPerComponent = image.bitsPerComponent
-        let bitsPerPixel = image.bitsPerPixel
-        
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: bitsPerComponent,
-            bytesPerRow: bytesPerRow,
-            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else {
-            return nil
-        }
-        
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        
-        guard let pixelData = context.data else {
-            return nil
-        }
-        
-        let pixelBuffer = pixelData.bindMemory(to: UInt8.self, capacity: width * height * 4)
-        
-        for y in 0..<height {
-            for x in 0..<width {
-                let offset = (y * bytesPerRow) + (x * 4)
-                
-                let red = pixelBuffer[offset]
-                let green = pixelBuffer[offset + 1]
-                let blue = pixelBuffer[offset + 2]
-                
-                if red == 0 && green == 0 && blue == 0 {
-                    pixelBuffer[offset + 3] = 0 // Set alpha to 0 for black pixels
-                }
-            }
-        }
-        
-        return context.makeImage()
+}
+
+extension CIImage {
+    /// This is only appropriate for grayscale mask images (our case). CIColorMatrix can be used more generally.
+    func maskedToAlpha() -> CIImage? {
+        let filter = CIFilter.maskToAlpha()
+        filter.inputImage = self
+        return filter.outputImage
+    }
+
+    func samTinted() -> CIImage? {
+        let filter = CIFilter.colorMatrix()
+        filter.rVector = CIVector(x: 30/255, y: 0, z: 0, w: 1)
+        filter.gVector = CIVector(x: 0, y: 144/255, z: 0, w: 1)
+        filter.bVector = CIVector(x: 0, y: 0, z: 1, w: 1)
+        filter.biasVector = CIVector(x: -1, y: -1, z: -1, w: 0)
+        filter.inputImage = self
+        return filter.outputImage?.cropped(to: self.extent)
     }
 }
 

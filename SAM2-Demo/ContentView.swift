@@ -72,13 +72,13 @@ struct SegmentationOverlay: View {
     let imageSize: CGSize
 
     var body: some View {
-            let nsImage = NSImage(cgImage: segmentationImage.image, size: imageSize)
+        let nsImage = NSImage(cgImage: segmentationImage.cgImage, size: imageSize)
             Image(nsImage: nsImage)
                 .resizable()
                 .scaledToFit()
                 .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(segmentationImage.isHidden ? 0:0.7)
+                .opacity(segmentationImage.isHidden ? 0:0.6)
                 .onAppear {
                     print(imageSize)
                 }

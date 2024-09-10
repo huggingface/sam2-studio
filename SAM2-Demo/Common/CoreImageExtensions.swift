@@ -24,6 +24,13 @@ extension CIImage {
 
         return filter.outputImage
     }
+
+    public func applyingThreshold(_ threshold: Float) -> CIImage? {
+        let filter = CIFilter.colorThreshold()
+        filter.inputImage = self
+        filter.threshold = threshold
+        return filter.outputImage
+    }
 }
 
 extension CIContext {
@@ -41,13 +48,13 @@ extension CIContext {
         guard status == kCVReturnSuccess else {
             return nil
         }
-        render(image, to: output)
+        render(image, to: output, bounds: image.extent, colorSpace: nil)
         return output
     }
 
     /// Writes the image as a PNG.
     func writePNG(_ image: CIImage, to url: URL) {
-        let outputCGImage = createCGImage(image, from: image.extent)!
+        let outputCGImage = createCGImage(image, from: image.extent, format: .BGRA8, colorSpace: nil)!
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
             fatalError("Failed to create an image destination.")
         }

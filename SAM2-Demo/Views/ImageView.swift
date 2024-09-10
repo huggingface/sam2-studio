@@ -102,11 +102,10 @@ struct ImageView: View {
         Task {
             do {
                 try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
-                let cgImageMask = try await sam2.getMask(for: originalSize ?? .zero)
-                if let cgImageMask {
+                if let mask = try await sam2.getMask(for: originalSize ?? .zero) {
                     DispatchQueue.main.async {
                         let segmentationNumber = segmentationImages.count
-                        let segmentationOverlay = SAMSegmentation(image: cgImageMask, title: "Untitled \(segmentationNumber + 1)")
+                        let segmentationOverlay = SAMSegmentation(image: mask, title: "Untitled \(segmentationNumber + 1)")
                         self.segmentationImages.append(segmentationOverlay)
                     }
                 }

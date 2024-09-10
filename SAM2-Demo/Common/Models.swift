@@ -90,10 +90,16 @@ extension SAMBox {
 
 struct SAMSegmentation: Hashable, Identifiable {
     let id = UUID()
-    var image: CGImage
+    var image: CIImage
     var title: String = ""
     var firstAppearance: Int?
     var isHidden: Bool = false
+
+    // TODO: review if this is necessary, remove the forced unwrap
+    var cgImage: CGImage {
+        let context = CIContext()
+        return context.createCGImage(image, from: image.extent, format: .BGRA8, colorSpace: nil)!
+    }
 }
 
 struct SAMTool: Hashable {
