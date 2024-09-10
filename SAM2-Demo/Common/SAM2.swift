@@ -156,9 +156,9 @@ class SAM2: ObservableObject {
                 // TODO: this should be a thresholdedMask I guess
                 self.thresholdedMask = maskcgImage
                 let resizedImage = try resizeCGImage(maskcgImage, to: original_size, applyingThreshold: Float(threshold))
-//                if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
-//                    return transparentImage
-//                }
+                if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
+                    return transparentImage
+                }
                 return resizedImage
             }
         }
