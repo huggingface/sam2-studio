@@ -26,17 +26,13 @@ struct PointsOverlay: View {
                 .scaledToFit()
                 .frame(width: 15, height: 15)
                 .foregroundStyle(point.category.color)
-                .position(computePosition(point: point))
+                .position(point.denormalize(for: imageSize, at: currentScale))
                 .onTapGesture {
                     if selectedTool == eraserTool {
                         selectedPoints.removeAll { $0.id == point.id }
                     }
                 }
         }
-    }
-    
-    private func computePosition(point: SAMPoint) -> CGPoint {
-        point.denormalize(for: imageSize, at: currentScale)
     }
 }
 

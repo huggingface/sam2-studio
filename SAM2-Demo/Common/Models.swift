@@ -77,11 +77,7 @@ struct SAMPoint: Hashable {
     
     init(coordinates: CGPoint, imageSize: CGSize, currentScale: CGFloat, category: SAMCategory) {
         self.coordinates = coordinates
-        print("Original coordinates: ", coordinates)
-        print("Image size: ", imageSize)
-        print("Current Scale: ", currentScale)
         self.normalizedCoordinate = SAMPoint.normalize(coordinates, at: currentScale, for: imageSize)
-        print("Normalized Coord: ", self.normalizedCoordinate)
         self.category = category
     }
     
