@@ -125,22 +125,30 @@ class SAM2: ObservableObject {
            let sparse_embedding = self.promptEncodings?.sparse_embeddings,
            let dense_embedding = self.promptEncodings?.dense_embeddings {
             let output = try model.prediction(image_embedding: image_embedding, sparse_embedding: sparse_embedding, dense_embedding: dense_embedding, feats_s0: feats0, feats_s1: feats1)
-            let low_featureMask = output.low_res_masks
-            
-            
-            // Cast low_featureMask from float16 to float32 and threshold
-            let float32Mask = try! MLMultiArray(shape: low_featureMask.shape, dataType: .float32)
 
-            // TODO: optimization (threshold, resizing)
+            // Extract only mask 3 to test
+            let low_featureMask = MLMultiArray(output.low_res_masksShapedArray[0, 2])
+            
+
+            // TODO: optimization
+            // Preserve range for upsampling
+            var minValue: Double = 9999
+            var maxValue: Double = -9999
             for i in 0..<low_featureMask.count {
-                float32Mask[i] = low_featureMask[i].floatValue > 0.0 ? 1.0 : 0.0
+                let v = low_featureMask[i].doubleValue
+                if v > maxValue { maxValue = v }
+                if v < minValue { minValue = v }
             }
-            if let maskcgImage = float32Mask.cgImage(min: 0, max: 1, axes: (1, 2, 3)) {
+            let threshold = -minValue / (maxValue - minValue)
+
+            // Resize first, then threshold
+            if let maskcgImage = low_featureMask.cgImage(min: minValue, max: maxValue) {
+                // TODO: this should be a thresholdedMask I guess
                 self.thresholdedMask = maskcgImage
-                let resizedImage = try resizeCGImage(maskcgImage, to: original_size)
-                if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
-                    return transparentImage
-                }
+                let resizedImage = try resizeCGImage(maskcgImage, to: original_size, applyingThreshold: Float(threshold))
+//                if let transparentImage = makeBlackPixelsTransparent(in: resizedImage) {
+//                    return transparentImage
+//                }
                 return resizedImage
             }
         }
@@ -162,13 +170,15 @@ class SAM2: ObservableObject {
         }
     }
     
-    private func resizeCGImage(_ image: CGImage, to size: CGSize) throws -> CGImage {
-        let ciImage = CIImage(cgImage: image)
+    private func resizeCGImage(_ image: CGImage, to size: CGSize, applyingThreshold threshold: Float = 1) throws -> CGImage {
+        let ciImage = CIImage(cgImage: image, options: [.colorSpace: NSNull()])
         let scale = CGAffineTransform(scaleX: size.width / CGFloat(image.width),
                                       y: size.height / CGFloat(image.height))
-        let scaledImage = ciImage.transformed(by: scale)
+        guard let scaledImage = ciImage.transformed(by: scale).applyingThreshold(threshold) else {
+            throw SAM2Error.imageResizingFailed
+        }
 
-        let context = CIContext(options: nil)
+        let context = CIContext()
         guard let resizedImage = context.createCGImage(scaledImage, from: scaledImage.extent) else {
             throw SAM2Error.imageResizingFailed
         }

@@ -24,6 +24,13 @@ extension CIImage {
 
         return filter.outputImage
     }
+
+    public func applyingThreshold(_ threshold: Float) -> CIImage? {
+        let filter = CIFilter.colorThreshold()
+        filter.inputImage = self
+        filter.threshold = threshold
+        return filter.outputImage
+    }
 }
 
 extension CIContext {
