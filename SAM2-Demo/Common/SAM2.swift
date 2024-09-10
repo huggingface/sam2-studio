@@ -98,7 +98,7 @@ class SAM2: ObservableObject {
             throw SAM2Error.modelNotLoaded
         }
 
-        let inputs = try sam2_small_image_encoderInput(imageAt: url)
+        let inputs = try sam2_tiny_image_encoderInput(imageAt: url)
         let encoding = try await model.prediction(input: inputs)
         self.imageEncodings = encoding
     }
