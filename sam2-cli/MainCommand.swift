@@ -91,7 +91,7 @@ struct MainCommand: AsyncParsableCommand {
         }
 
         // Overlay over original and save
-        guard let outputImage = maskImage.withAlpha(0.5)?.composited(over: inputImage) else {
+        guard let outputImage = maskImage.withAlpha(0.6)?.composited(over: inputImage) else {
             print("Failed to blend mask.")
             throw ExitCode(EXIT_FAILURE)
         }

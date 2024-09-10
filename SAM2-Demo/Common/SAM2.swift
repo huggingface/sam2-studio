@@ -155,7 +155,7 @@ class SAM2: ObservableObject {
             if let maskcgImage = low_featureMask.cgImage(min: minValue, max: maxValue) {
                 let ciImage = CIImage(cgImage: maskcgImage, options: [.colorSpace: NSNull()])
                 let resizedImage = try resizeImage(ciImage, to: original_size, applyingThreshold: Float(threshold))
-                return makeBlackPixelsTransparent(in: resizedImage)
+                return resizedImage?.maskedToAlpha()?.samTinted()
             }
         }
         return nil
@@ -181,13 +181,24 @@ class SAM2: ObservableObject {
                                       y: size.height / image.extent.height)
         return image.transformed(by: scale).applyingThreshold(threshold)
     }
+}
 
+extension CIImage {
     /// This is only appropriate for grayscale mask images (our case). CIColorMatrix can be used more generally.
-    func makeBlackPixelsTransparent(in image: CIImage?) -> CIImage? {
-        guard let image = image else { return nil }
+    func maskedToAlpha() -> CIImage? {
         let filter = CIFilter.maskToAlpha()
-        filter.inputImage = image
+        filter.inputImage = self
         return filter.outputImage
+    }
+
+    func samTinted() -> CIImage? {
+        let filter = CIFilter.colorMatrix()
+        filter.rVector = CIVector(x: 30/255, y: 0, z: 0, w: 1)
+        filter.gVector = CIVector(x: 0, y: 144/255, z: 0, w: 1)
+        filter.bVector = CIVector(x: 0, y: 0, z: 1, w: 1)
+        filter.biasVector = CIVector(x: -1, y: -1, z: -1, w: 0)
+        filter.inputImage = self
+        return filter.outputImage?.cropped(to: self.extent)
     }
 }
 

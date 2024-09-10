@@ -78,7 +78,7 @@ struct SegmentationOverlay: View {
                 .scaledToFit()
                 .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(segmentationImage.isHidden ? 0:0.7)
+                .opacity(segmentationImage.isHidden ? 0:0.6)
                 .onAppear {
                     print(imageSize)
                 }
