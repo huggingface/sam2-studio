@@ -91,14 +91,38 @@ extension SAMBox {
 struct SAMSegmentation: Hashable, Identifiable {
     let id = UUID()
     var image: CIImage
+    var tintColor: Color {
+        didSet {
+            updateTintedImage()
+        }
+    }
     var title: String = ""
     var firstAppearance: Int?
     var isHidden: Bool = false
+    
+    private var tintedImage: CIImage?
 
-    // TODO: review if this is necessary, remove the forced unwrap
+    init(image: CIImage, tintColor: Color = Color(.sRGB, red: 30/255, green: 144/255, blue: 1), title: String = "", firstAppearance: Int? = nil, isHidden: Bool = false) {
+        self.image = image
+        self.tintColor = tintColor
+        self.title = title
+        self.firstAppearance = firstAppearance
+        self.isHidden = isHidden
+        updateTintedImage()
+    }
+
+    private mutating func updateTintedImage() {
+        let ciColor = CIColor(color: NSColor(tintColor))
+        let monochromeFilter = CIFilter.colorMonochrome()
+        monochromeFilter.inputImage = image
+        monochromeFilter.color = ciColor!
+        monochromeFilter.intensity = 1.0
+        tintedImage = monochromeFilter.outputImage
+    }
+
     var cgImage: CGImage {
         let context = CIContext()
-        return context.createCGImage(image, from: image.extent, format: .BGRA8, colorSpace: nil)!
+        return context.createCGImage(tintedImage ?? image, from: (tintedImage ?? image).extent)!
     }
 }
 

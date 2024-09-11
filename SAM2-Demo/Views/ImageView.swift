@@ -39,12 +39,15 @@ struct ImageView: View {
             })
             .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
             .overlay {
-                PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool)
-                BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
-                
-                if !segmentationImages.isEmpty {
-                    ForEach($segmentationImages, id: \.id) { segmentationImage in
-                        SegmentationOverlay(segmentationImage: segmentationImage, imageSize: imageSize)
+                ZStack {
+                    PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool)
+                    BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
+                    
+                    if !segmentationImages.isEmpty {
+                        ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
+                            SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize)
+                                .zIndex(Double (segmentationImages.count - index))
+                        }
                     }
                 }
                 

@@ -79,9 +79,9 @@ struct SegmentationOverlay: View {
                 .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
                 .opacity(segmentationImage.isHidden ? 0:0.6)
-                .onAppear {
-                    print(imageSize)
-                }
+//                .onAppear {
+//                    print(imageSize)
+//                }
     }
 }
 
@@ -100,6 +100,7 @@ struct ContentView: View {
     // Mask exporter
     @State private var exportURL: URL?
     @State private var exportMaskToPNG: Bool = false
+    @State private var showInspector: Bool = true
     @State private var selectedSegmentations = Set<SAMSegmentation.ID>()
     
     // Photos Picker
@@ -124,7 +125,7 @@ struct ContentView: View {
     var body: some View {
         
         NavigationSplitView(sidebar: {
-            LayerListView(segmentationImages: $segmentationImages, exportMaskToPNG: $exportMaskToPNG, selectedSegmentations: $selectedSegmentations)
+            LayerListView(segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations)
         }, detail: {
             ZStack {
                 VStack {
@@ -134,11 +135,36 @@ struct ContentView: View {
                         if let image = displayImage {
                             ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
                         } else {
-                            ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started,"))
+                            ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
                         }
                     }
                 }
             }
+        })
+        .inspector(isPresented: $showInspector, content: {
+            if selectedSegmentations.isEmpty {
+                ContentUnavailableView(label: {
+                    Label(title: {
+                        Text("No Mask Selected")
+                            .font(.subheadline)
+                    }, icon: {})
+                    
+                })
+                .inspectorColumnWidth(min: 200, ideal: 200, max: 200)
+            } else {
+                MaskEditor(exportMaskToPNG: $exportMaskToPNG, segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations)
+                    .inspectorColumnWidth(min: 200, ideal: 200, max: 200)
+                    .toolbar {
+                        Spacer()
+                        Button {
+                            showInspector.toggle()
+                        } label: {
+                            Label("Toggle Inspector", systemImage: "sidebar.trailing")
+                        }
+                    }
+                
+            }
+            
         })
         .toolbar {
             // Tools
@@ -245,7 +271,7 @@ struct ContentView: View {
         }
         
         // MARK: - File exporter
-        .fileExporter(
+                      .fileExporter(
                         isPresented: $exportMaskToPNG,
                         document: DirectoryDocument(initialContentType: .folder),
                         contentType: .folder,

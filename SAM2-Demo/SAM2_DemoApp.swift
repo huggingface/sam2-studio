@@ -13,5 +13,6 @@ struct SAM2_DemoApp: App {
         WindowGroup {
             ContentView()
         }
+        .windowToolbarStyle(UnifiedWindowToolbarStyle(showsTitle: false))
     }
 }

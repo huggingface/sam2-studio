@@ -10,7 +10,6 @@ import SwiftUI
 struct LayerListView: View {
     
     @Binding var segmentationImages: [SAMSegmentation]
-    @Binding var exportMaskToPNG: Bool
     @Binding var selectedSegmentations: Set<SAMSegmentation.ID>
     
     var body: some View {
@@ -19,12 +18,13 @@ struct LayerListView: View {
                 ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
                     AnnotationListView(segmentation: $segmentationImages[index])
                         .padding(.horizontal, 5)
-                        .zIndex(Double(index))
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button {
-                                exportMaskToPNG = true
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                if let index = segmentationImages.firstIndex(where: { $0.id == segmentation.id }) {
+                                    segmentationImages.remove(at: index)
+                                }
                             } label: {
-                                Label("Export", systemImage: "square.and.arrow.up.fill")
+                                Label("Delete", systemImage: "trash.fill")
                             }
                         }
                 }
