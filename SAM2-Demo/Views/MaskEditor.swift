@@ -17,14 +17,13 @@ struct MaskEditor: View {
     Color(.sRGB, red: 30/255, green: 144/255, blue: 1)
     
     var body: some View {
-        //        VStack() {
         Form {
             Section {
                 ColorPicker("Color", selection: $bgColor)
                     .onChange(of: bgColor) { oldColor, newColor in
                         updateSelectedSegmentationsColor(newColor)
                     }
-                
+                Spacer()
                 Button("Export Selected...", action: {
                     exportMaskToPNG = true
                 })
@@ -32,9 +31,14 @@ struct MaskEditor: View {
             }
             
         }
-        
-        //        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onChange(of: selectedSegmentations) { oldValue, newValue in
+            bgColor = getColorOfFirstSelectedSegmentation()
+        }
+        .onAppear {
+            bgColor = getColorOfFirstSelectedSegmentation()
+        }
+        
     }
     
     private func updateSelectedSegmentationsColor(_ newColor: Color) {
@@ -43,6 +47,14 @@ struct MaskEditor: View {
                 segmentationImages[index].tintColor = newColor
             }
         }
+    }
+    
+    private func getColorOfFirstSelectedSegmentation() -> Color {
+        if let firstSelectedId = selectedSegmentations.first,
+           let firstSelectedSegmentation = segmentationImages.first(where: { $0.id == firstSelectedId }) {
+            return firstSelectedSegmentation.tintColor
+        }
+        return bgColor // Return default color if no segmentation is selected
     }
 }
 
