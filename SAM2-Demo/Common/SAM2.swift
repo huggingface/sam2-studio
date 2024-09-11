@@ -15,15 +15,15 @@ import UniformTypeIdentifiers
 @MainActor
 class SAM2: ObservableObject {
     
-    @Published var imageEncodings: sam2_tiny_image_encoderOutput?
-    @Published var promptEncodings: sam2_tiny_prompt_encoderOutput?
+    @Published var imageEncodings: SAM2TinyImageEncoderFLOAT16Output?
+    @Published var promptEncodings: SAM2TinyPromptEncoderFLOAT16Output?
 
     @Published private(set) var initializationTime: TimeInterval?
     @Published private(set) var initialized: Bool?
 
-    private var imageEncoderModel: sam2_tiny_image_encoder?
-    private var promptEncoderModel: sam2_tiny_prompt_encoder?
-    private var maskDecoderModel: sam2_tiny_mask_decoder?
+    private var imageEncoderModel: SAM2TinyImageEncoderFLOAT16?
+    private var promptEncoderModel: SAM2TinyPromptEncoderFLOAT16?
+    private var maskDecoderModel: SAM2TinyMaskDecoderFLOAT16?
 
     // TODO: examine model inputs instead
     var inputSize: CGSize { CGSize(width: 1024, height: 1024) }
@@ -43,9 +43,9 @@ class SAM2: ObservableObject {
             let configuration = MLModelConfiguration()
             configuration.computeUnits = .cpuAndGPU
             let (imageEncoder, promptEncoder, maskDecoder) = try await Task.detached(priority: .userInitiated) {
-                let imageEncoder = try sam2_tiny_image_encoder(configuration: configuration)
-                let promptEncoder = try sam2_tiny_prompt_encoder(configuration: configuration)
-                let maskDecoder = try sam2_tiny_mask_decoder(configuration: configuration)
+                let imageEncoder = try SAM2TinyImageEncoderFLOAT16(configuration: configuration)
+                let promptEncoder = try SAM2TinyPromptEncoderFLOAT16(configuration: configuration)
+                let maskDecoder = try SAM2TinyMaskDecoderFLOAT16(configuration: configuration)
                 return (imageEncoder, promptEncoder, maskDecoder)
             }.value
             
@@ -99,7 +99,7 @@ class SAM2: ObservableObject {
             throw SAM2Error.modelNotLoaded
         }
 
-        let inputs = try sam2_tiny_image_encoderInput(imageAt: url)
+        let inputs = try SAM2TinyImageEncoderFLOAT16Input(imageAt: url)
         let encoding = try await model.prediction(input: inputs)
         self.imageEncodings = encoding
     }
