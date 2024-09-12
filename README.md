@@ -25,7 +25,7 @@ This demo supports images, video support will be coming later.
 
 ## Converting Models
 
-If you want to use a fine-tuned model, you can convert it using [this fork of the SAM 2 repo](https://github.com/FL33TW00D/segment-anything-2/tree/main). Please, let us know what you use it for!
+If you want to use a fine-tuned model, you can convert it using [this fork of the SAM 2 repo](https://github.com/huggingface/segment-anything-2/tree/coreml-conversion). Please, let us know what you use it for!
 
 ## Feedback and Contributions
 
