@@ -15,15 +15,15 @@ import UniformTypeIdentifiers
 @MainActor
 class SAM2: ObservableObject {
     
-    @Published var imageEncodings: SAM2TinyImageEncoderFLOAT16Output?
-    @Published var promptEncodings: SAM2TinyPromptEncoderFLOAT16Output?
+    @Published var imageEncodings: SAM2SmallImageEncoderFLOAT16Output?
+    @Published var promptEncodings: SAM2SmallPromptEncoderFLOAT16Output?
 
     @Published private(set) var initializationTime: TimeInterval?
     @Published private(set) var initialized: Bool?
 
-    private var imageEncoderModel: SAM2TinyImageEncoderFLOAT16?
-    private var promptEncoderModel: SAM2TinyPromptEncoderFLOAT16?
-    private var maskDecoderModel: SAM2TinyMaskDecoderFLOAT16?
+    private var imageEncoderModel: SAM2SmallImageEncoderFLOAT16?
+    private var promptEncoderModel: SAM2SmallPromptEncoderFLOAT16?
+    private var maskDecoderModel: SAM2SmallMaskDecoderFLOAT16?
 
     // TODO: examine model inputs instead
     var inputSize: CGSize { CGSize(width: 1024, height: 1024) }
@@ -43,9 +43,9 @@ class SAM2: ObservableObject {
             let configuration = MLModelConfiguration()
             configuration.computeUnits = .cpuAndGPU
             let (imageEncoder, promptEncoder, maskDecoder) = try await Task.detached(priority: .userInitiated) {
-                let imageEncoder = try SAM2TinyImageEncoderFLOAT16(configuration: configuration)
-                let promptEncoder = try SAM2TinyPromptEncoderFLOAT16(configuration: configuration)
-                let maskDecoder = try SAM2TinyMaskDecoderFLOAT16(configuration: configuration)
+                let imageEncoder = try SAM2SmallImageEncoderFLOAT16(configuration: configuration)
+                let promptEncoder = try SAM2SmallPromptEncoderFLOAT16(configuration: configuration)
+                let maskDecoder = try SAM2SmallMaskDecoderFLOAT16(configuration: configuration)
                 return (imageEncoder, promptEncoder, maskDecoder)
             }.value
             
@@ -99,7 +99,7 @@ class SAM2: ObservableObject {
             throw SAM2Error.modelNotLoaded
         }
 
-        let inputs = try SAM2TinyImageEncoderFLOAT16Input(imageAt: url)
+        let inputs = try SAM2SmallImageEncoderFLOAT16Input(imageAt: url)
         let encoding = try await model.prediction(input: inputs)
         self.imageEncodings = encoding
     }
@@ -125,7 +125,7 @@ class SAM2: ObservableObject {
         self.promptEncodings = encoding
     }
 
-    func bestMask(for output: SAM2LargeMaskDecoderFLOAT16Output) -> MLMultiArray {
+    func bestMask(for output: SAM2SmallMaskDecoderFLOAT16Output) -> MLMultiArray {
         if #available(macOS 15.0, *) {
             let scores = output.scoresShapedArray.scalars
             let argmax = scores.firstIndex(of: scores.max() ?? 0) ?? 0
@@ -142,8 +142,7 @@ class SAM2: ObservableObject {
             for i in 0..<h.intValue {
                 for j in 0..<w.intValue {
                     let position = [0, argmax, i, j] as [NSNumber]
-                    let value = allMasks[position]
-                    slice[[i as NSNumber, j as NSNumber]] = value  //NSNumber(value: value)
+                    slice[[i as NSNumber, j as NSNumber]] = allMasks[position]
                 }
             }
             return slice
