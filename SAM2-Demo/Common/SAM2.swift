@@ -124,7 +124,32 @@ class SAM2: ObservableObject {
         let encoding = try model.prediction(points: pointsMultiArray, labels: labelsMultiArray)
         self.promptEncodings = encoding
     }
-    
+
+    func bestMask(for output: SAM2LargeMaskDecoderFLOAT16Output) -> MLMultiArray {
+        if #available(macOS 15.0, *) {
+            let scores = output.scoresShapedArray.scalars
+            let argmax = scores.firstIndex(of: scores.max() ?? 0) ?? 0
+            return MLMultiArray(output.low_res_masksShapedArray[0, argmax])
+        } else {
+            // Convert scores to float32 for compatibility with macOS < 15,
+            // plus ugly loop copy (could do some memcpys)
+            let scores = output.scores
+            let floatScores = (0..<scores.count).map { scores[$0].floatValue }
+            let argmax = floatScores.firstIndex(of: floatScores.max() ?? 0) ?? 0
+            let allMasks = output.low_res_masks
+            let (h, w) = (allMasks.shape[2], allMasks.shape[3])
+            let slice = try! MLMultiArray(shape: [h, w], dataType: allMasks.dataType)
+            for i in 0..<h.intValue {
+                for j in 0..<w.intValue {
+                    let position = [0, argmax, i, j] as [NSNumber]
+                    let value = allMasks[position]
+                    slice[[i as NSNumber, j as NSNumber]] = value  //NSNumber(value: value)
+                }
+            }
+            return slice
+        }
+    }
+
     func getMask(for original_size: CGSize) async throws -> CIImage? {
         guard let model = maskDecoderModel else {
             throw SAM2Error.modelNotLoaded
@@ -138,23 +163,21 @@ class SAM2: ObservableObject {
             let output = try model.prediction(image_embedding: image_embedding, sparse_embedding: sparse_embedding, dense_embedding: dense_embedding, feats_s0: feats0, feats_s1: feats1)
 
             // Extract best mask and ignore the others
-            let scores = output.scoresShapedArray.scalars
-            let argmax = scores.firstIndex(of: scores.max() ?? 0) ?? 0
-            let low_featureMask = MLMultiArray(output.low_res_masksShapedArray[0, argmax])
+            let lowFeatureMask = bestMask(for: output)
 
             // TODO: optimization
             // Preserve range for upsampling
             var minValue: Double = 9999
             var maxValue: Double = -9999
-            for i in 0..<low_featureMask.count {
-                let v = low_featureMask[i].doubleValue
+            for i in 0..<lowFeatureMask.count {
+                let v = lowFeatureMask[i].doubleValue
                 if v > maxValue { maxValue = v }
                 if v < minValue { minValue = v }
             }
             let threshold = -minValue / (maxValue - minValue)
 
             // Resize first, then threshold
-            if let maskcgImage = low_featureMask.cgImage(min: minValue, max: maxValue) {
+            if let maskcgImage = lowFeatureMask.cgImage(min: minValue, max: maxValue) {
                 let ciImage = CIImage(cgImage: maskcgImage, options: [.colorSpace: NSNull()])
                 let resizedImage = try resizeImage(ciImage, to: original_size, applyingThreshold: Float(threshold))
                 return resizedImage?.maskedToAlpha()?.samTinted()
