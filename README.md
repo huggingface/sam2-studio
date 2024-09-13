@@ -6,9 +6,14 @@ This is a Swift demo app for SAM 2 Core ML models.
 
 SAM 2 (Segment Anything in Images and Videos), is a collection of foundation models from FAIR that aim to solve promptable visual segmentation in images and videos. See the [SAM 2 paper](https://arxiv.org/abs/2408.00714) for more information.
 
+## Quick Start ⚡️
+
+Download the compiled version [here!](https://huggingface.co/coreml-projects/sam-2-studio).
+
 ## How to Use
 
-Download the repo, compile with Xcode and run. The app comes with the Small version of the model, but you can replace it with one of the supported models:
+If you prefer to compile it yourself or want to use a larger model, simply download the repo, compile with Xcode and run. 
+The app comes with the Small version of the model, but you can replace it with one of the supported models:
 
 - [SAM 2 Tiny](https://huggingface.co/coreml-projects/coreml-sam2-tiny)
 - [SAM 2 Small](https://huggingface.co/coreml-projects/coreml-sam2-small)
