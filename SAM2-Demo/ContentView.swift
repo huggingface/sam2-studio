@@ -17,14 +17,14 @@ struct PointsOverlay: View {
     @Binding var selectedPoints: [SAMPoint]
     @Binding var selectedTool: SAMTool?
     let imageSize: CGSize
-
+    
     var body: some View {
         ForEach(selectedPoints, id: \.self) { point in
             Circle()
                 .frame(width: 10, height: 10)
                 .foregroundStyle(point.category.color)
                 .position(point.coordinates.toSize(imageSize))
-                
+            
         }
     }
 }
@@ -33,7 +33,7 @@ struct BoundingBoxesOverlay: View {
     let boundingBoxes: [SAMBox]
     let currentBox: SAMBox?
     let imageSize: CGSize
-
+    
     var body: some View {
         ForEach(boundingBoxes) { box in
             BoundingBoxPath(box: box, imageSize: imageSize)
@@ -47,7 +47,7 @@ struct BoundingBoxesOverlay: View {
 struct BoundingBoxPath: View {
     let box: SAMBox
     let imageSize: CGSize
-
+    
     var body: some View {
         Path { path in
             path.move(to: box.startPoint.toSize(imageSize))
@@ -71,21 +71,21 @@ struct SegmentationOverlay: View {
     @State var counter: Int = 0
     var origin: CGPoint = .zero
     var shouldAnimate: Bool = false
-
+    
     var body: some View {
         let nsImage = NSImage(cgImage: segmentationImage.cgImage, size: imageSize)
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFit()
-                .allowsHitTesting(false)
-                .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(segmentationImage.isHidden ? 0:0.6)
-                .modifier(RippleEffect(at: CGPoint(x: segmentationImage.cgImage.width/2, y: segmentationImage.cgImage.height/2), trigger: counter))
-                .onAppear {
-                    if shouldAnimate {
-                        counter += 1
-                    }
+        Image(nsImage: nsImage)
+            .resizable()
+            .scaledToFit()
+            .allowsHitTesting(false)
+            .frame(width: imageSize.width, height: imageSize.height)
+            .opacity(segmentationImage.isHidden ? 0:0.6)
+            .modifier(RippleEffect(at: CGPoint(x: segmentationImage.cgImage.width/2, y: segmentationImage.cgImage.height/2), trigger: counter))
+            .onAppear {
+                if shouldAnimate {
+                    counter += 1
                 }
+            }
     }
 }
 
@@ -140,22 +140,23 @@ struct ContentView: View {
                     }
                 }, label: {
                     Text("New Mask")
-                        
+                    
                 }).padding()
             }
         }, detail: {
             ZStack {
-                VStack(spacing: 0) {
-                    SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation)
-                    
-                    ZoomableScrollView(visibleRect: $visibleRect) {
-                        if let image = displayImage {
-                            ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
-                        } else {
-                            ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
-                        }
+                ZoomableScrollView(visibleRect: $visibleRect) {
+                    if let image = displayImage {
+                        ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
+                    } else {
+                        ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
                     }
                 }
+                VStack(spacing: 0) {
+                    SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation)
+                    Spacer()
+                }
+                
             }
         })
         .inspector(isPresented: $showInspector, content: {
@@ -237,9 +238,9 @@ struct ContentView: View {
             if selectedCategory == nil {
                 selectedCategory = categories.first
             }
-           
+            
         }
-
+        
         // MARK: - Image encoding
         .onChange(of: displayImage) {
             segmentationImages = []
@@ -360,7 +361,7 @@ struct ContentView: View {
         currentSegmentation = nil
     }
     
-
+    
 }
 
 struct SizePreferenceKey: PreferenceKey {
