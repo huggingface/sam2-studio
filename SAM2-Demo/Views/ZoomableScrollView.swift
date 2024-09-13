@@ -22,7 +22,7 @@ struct ZoomableScrollView<Content: View>: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
-        scrollView.allowsMagnification = true
+        scrollView.allowsMagnification = false
         scrollView.maxMagnification = 20
         scrollView.minMagnification = 1
 
