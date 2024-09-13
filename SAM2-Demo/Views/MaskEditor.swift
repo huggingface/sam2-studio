@@ -12,6 +12,7 @@ struct MaskEditor: View {
     @Binding var exportMaskToPNG: Bool
     @Binding var segmentationImages: [SAMSegmentation]
     @Binding var selectedSegmentations: Set<SAMSegmentation.ID>
+    @Binding var currentSegmentation: SAMSegmentation?
     
     @State private var bgColor =
     Color(.sRGB, red: 30/255, green: 144/255, blue: 1)
@@ -23,7 +24,7 @@ struct MaskEditor: View {
                     .onChange(of: bgColor) { oldColor, newColor in
                         updateSelectedSegmentationsColor(newColor)
                     }
-                Spacer()
+                
                 Button("Export Selected...", action: {
                     exportMaskToPNG = true
                 })

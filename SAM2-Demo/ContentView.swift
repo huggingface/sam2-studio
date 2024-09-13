@@ -70,6 +70,10 @@ struct SegmentationOverlay: View {
     
     @Binding var segmentationImage: SAMSegmentation
     let imageSize: CGSize
+    
+    @State var counter: Int = 0
+    var origin: CGPoint = .zero
+    var shouldAnimate: Bool = false
 
     var body: some View {
         let nsImage = NSImage(cgImage: segmentationImage.cgImage, size: imageSize)
@@ -79,9 +83,12 @@ struct SegmentationOverlay: View {
                 .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
                 .opacity(segmentationImage.isHidden ? 0:0.6)
-//                .onAppear {
-//                    print(imageSize)
-//                }
+                .modifier(RippleEffect(at: CGPoint(x: segmentationImage.cgImage.width/2, y: segmentationImage.cgImage.height/2), trigger: counter))
+                .onAppear {
+                    if shouldAnimate {
+                        counter += 1
+                    }
+                }
     }
 }
 
@@ -89,6 +96,7 @@ struct ContentView: View {
     
     // ML Models
     @StateObject private var sam2 = SAM2()
+    @State private var currentSegmentation: SAMSegmentation?
     @State private var segmentationImages: [SAMSegmentation] = []
     @State private var imageSize: CGSize = .zero
     
@@ -125,15 +133,27 @@ struct ContentView: View {
     var body: some View {
         
         NavigationSplitView(sidebar: {
-            LayerListView(segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations)
+            VStack {
+                LayerListView(segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations, currentSegmentation: $currentSegmentation)
+                Spacer()
+                Button(action: {
+                    if let currentSegmentation = self.currentSegmentation {
+                        self.segmentationImages.append(currentSegmentation)
+                        self.reset()
+                    }
+                }, label: {
+                    Text("New Mask")
+                        
+                }).padding()
+            }
         }, detail: {
             ZStack {
-                VStack {
-                    SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages)
+                VStack(spacing: 0) {
+                    SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation)
                     
-                    ScrollView([.vertical, .horizontal]) {
+                    ZoomableScrollView {
                         if let image = displayImage {
-                            ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
+                            ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
                         } else {
                             ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
                         }
@@ -152,7 +172,7 @@ struct ContentView: View {
                 })
                 .inspectorColumnWidth(min: 200, ideal: 200, max: 200)
             } else {
-                MaskEditor(exportMaskToPNG: $exportMaskToPNG, segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations)
+                MaskEditor(exportMaskToPNG: $exportMaskToPNG, segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations, currentSegmentation: $currentSegmentation)
                     .inspectorColumnWidth(min: 200, ideal: 200, max: 200)
                     .toolbar {
                         Spacer()
@@ -226,6 +246,7 @@ struct ContentView: View {
         // MARK: - Image encoding
         .onChange(of: displayImage) {
             segmentationImages = []
+            self.reset()
             Task {
                 if let displayImage, let pixelBuffer = displayImage.pixelBuffer(width: 1024, height: 1024) {
                     originalSize = displayImage.size
@@ -333,6 +354,13 @@ struct ContentView: View {
         } catch {
             print("Error creating directory: \(error.localizedDescription)")
         }
+    }
+    
+    private func reset() {
+        selectedPoints = []
+        boundingBoxes = []
+        currentBox = nil
+        currentSegmentation = nil
     }
     
 

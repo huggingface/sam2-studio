@@ -73,6 +73,7 @@ struct SAMPoint: Hashable {
     let id = UUID()
     let coordinates: CGPoint
     let category: SAMCategory
+    let dateAdded = Date()
 }
 
 struct SAMBox: Hashable, Identifiable {
@@ -80,6 +81,13 @@ struct SAMBox: Hashable, Identifiable {
     var startPoint: CGPoint
     var endPoint: CGPoint
     let category: SAMCategory
+    let dateAdded = Date()
+    var midpoint: CGPoint {
+        return CGPoint(
+            x: (startPoint.x + endPoint.x) / 2,
+            y: (startPoint.y + endPoint.y) / 2
+        )
+    }
 }
 
 extension SAMBox {

@@ -11,6 +11,7 @@ struct LayerListView: View {
     
     @Binding var segmentationImages: [SAMSegmentation]
     @Binding var selectedSegmentations: Set<SAMSegmentation.ID>
+    @Binding var currentSegmentation: SAMSegmentation?
     
     var body: some View {
         List(selection: $selectedSegmentations) {
@@ -18,7 +19,7 @@ struct LayerListView: View {
                 ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
                     AnnotationListView(segmentation: $segmentationImages[index])
                         .padding(.horizontal, 5)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        .contextMenu {
                             Button(role: .destructive) {
                                 if let index = segmentationImages.firstIndex(where: { $0.id == segmentation.id }) {
                                     segmentationImages.remove(at: index)
@@ -30,6 +31,10 @@ struct LayerListView: View {
                 }
                 .onDelete(perform: delete)
                 .onMove(perform: move)
+                if let currentSegmentation = currentSegmentation {
+                    AnnotationListView(segmentation: .constant(currentSegmentation))
+                }
+                
                 
             }
         }

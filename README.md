@@ -10,10 +10,10 @@ SAM 2 (Segment Anything in Images and Videos), is a collection of foundation mod
 
 Download the repo, compile with Xcode and run. The app comes with the Small version of the model, but you can replace it with one of the supported models:
 
-- [SAM 2 Tiny](https://huggingface.co/coreml-projects/coreml-sam2-tiny)
-- [SAM 2 Small](https://huggingface.co/coreml-projects/coreml-sam2-small)
-- [SAM 2 Base](https://huggingface.co/coreml-projects/coreml-sam2-base)
-- [SAM 2 Large](https://huggingface.co/coreml-projects/coreml-sam2-large)
+- [SAM 2 Tiny](https://huggingface.co/coreml-projects/coreml-sam2-tiny/edit/main/README.md)
+- [SAM 2 Small](https://huggingface.co/coreml-projects/coreml-sam2-small/edit/main/README.md)
+- [SAM 2 Base](https://huggingface.co/coreml-projects/coreml-sam2-base/edit/main/README.md)
+- [SAM 2 Large](https://huggingface.co/coreml-projects/coreml-sam2-large/edit/main/README.md)
 
 This demo supports images, video support will be coming later.
 

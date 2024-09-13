@@ -16,8 +16,11 @@ struct ImageView: View {
     @Binding var boundingBoxes: [SAMBox]
     @Binding var currentBox: SAMBox?
     @Binding var segmentationImages: [SAMSegmentation]
+    @Binding var currentSegmentation: SAMSegmentation?
     @Binding var imageSize: CGSize
     @Binding var originalSize: NSSize?
+    
+    @State var animationPoint: CGPoint = .zero
     @ObservedObject var sam2: SAM2
     @State private var error: Error?
     
@@ -26,33 +29,45 @@ struct ImageView: View {
     }
 
     var body: some View {
-        Image(nsImage: image)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .scaleEffect(currentScale)
-            .frame(maxWidth: 500, maxHeight: 500)
-            .onTapGesture(coordinateSpace: .local) { handleTap(at: $0) }
-            .gesture(boundingBoxGesture)
-            .onHover { changeCursorAppearance(is: $0) }
-            .background(GeometryReader { geometry in
-                Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
-            })
-            .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
-            .overlay {
-                ZStack {
+        
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .scaleEffect(currentScale)
+                .onTapGesture(coordinateSpace: .local) { handleTap(at: $0) }
+                .gesture(boundingBoxGesture)
+                .onHover { changeCursorAppearance(is: $0) }
+                .background(GeometryReader { geometry in
+                    Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
+                })
+                .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
+                .onChange(of: selectedPoints.count, {
+                    if !selectedPoints.isEmpty {
+                        performForwardPass()
+                    }
+                })
+                .onChange(of: boundingBoxes.count, {
+                    if !boundingBoxes.isEmpty {
+                        performForwardPass()
+                    }
+                })
+                .overlay {
                     PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool)
                     BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
                     
                     if !segmentationImages.isEmpty {
                         ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
-                            SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize)
+                            SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize, shouldAnimate: false)
                                 .zIndex(Double (segmentationImages.count - index))
                         }
                     }
+                   
+                    if let currentSegmentation = currentSegmentation {
+                        SegmentationOverlay(segmentationImage: .constant(currentSegmentation), imageSize: imageSize, origin: animationPoint, shouldAnimate: true)
+                            .zIndex(Double(segmentationImages.count + 1))
+                    }
                 }
-                
-               
-            }
+        
     }
     
     private func changeCursorAppearance(is inside: Bool) {
@@ -83,8 +98,8 @@ struct ImageView: View {
                 
                 if let box = currentBox {
                     boundingBoxes.append(box)
+                    animationPoint = box.midpoint
                     currentBox = nil
-                    performForwardPass()
                 }
             }
     }
@@ -92,7 +107,7 @@ struct ImageView: View {
     private func handleTap(at location: CGPoint) {
         if selectedTool == pointTool {
             placePoint(at: location)
-            performForwardPass()
+            animationPoint = location
         }
     }
     
@@ -109,7 +124,7 @@ struct ImageView: View {
                     DispatchQueue.main.async {
                         let segmentationNumber = segmentationImages.count
                         let segmentationOverlay = SAMSegmentation(image: mask, title: "Untitled \(segmentationNumber + 1)")
-                        self.segmentationImages.append(segmentationOverlay)
+                        self.currentSegmentation = segmentationOverlay
                     }
                 }
             } catch {
