@@ -140,7 +140,6 @@ struct ContentView: View {
                     }
                 }, label: {
                     Text("New Mask")
-                    
                 }).padding()
             }
         }, detail: {
@@ -298,8 +297,11 @@ struct ContentView: View {
                       ) { result in
                           if case .success(let url) = result {
                               exportURL = url
-                              let selectedToExport = segmentationImages.filter { segmentation in
+                              var selectedToExport = segmentationImages.filter { segmentation in
                                   selectedSegmentations.contains(segmentation.id)
+                              }
+                              if let currentSegmentation {
+                                  selectedToExport.append(currentSegmentation)
                               }
                               exportSegmentations(selectedToExport, to: url)
                           }
