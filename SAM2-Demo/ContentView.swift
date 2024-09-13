@@ -39,26 +39,28 @@ struct PointsOverlay: View {
 struct BoundingBoxesOverlay: View {
     let boundingBoxes: [SAMBox]
     let currentBox: SAMBox?
+    let imageSize: CGSize
 
     var body: some View {
         ForEach(boundingBoxes) { box in
-            BoundingBoxPath(box: box)
+            BoundingBoxPath(box: box, imageSize: imageSize)
         }
         if let currentBox = currentBox {
-            BoundingBoxPath(box: currentBox)
+            BoundingBoxPath(box: currentBox, imageSize: imageSize)
         }
     }
 }
 
 struct BoundingBoxPath: View {
     let box: SAMBox
+    let imageSize: CGSize
 
     var body: some View {
         Path { path in
-            path.move(to: box.startPoint)
-            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y))
-            path.addLine(to: box.endPoint)
-            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
+            path.move(to: box.startPoint.toSize(imageSize))
+            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y).toSize(imageSize))
+            path.addLine(to: box.endPoint.toSize(imageSize))
+            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y).toSize(imageSize))
             path.closeSubpath()
         }
         .stroke(
