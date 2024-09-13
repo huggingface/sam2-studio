@@ -57,14 +57,12 @@ struct ImageView: View {
 
                     if !segmentationImages.isEmpty {
                         ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
-                            let _ = print("overlay imageSize: \(imageSize)")
                             SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize, shouldAnimate: false)
                                 .zIndex(Double (segmentationImages.count - index))
                         }
                     }
                    
                     if let currentSegmentation = currentSegmentation {
-                        let _ = print("current, imageSize: \(imageSize)")
                         SegmentationOverlay(segmentationImage: .constant(currentSegmentation), imageSize: imageSize, origin: animationPoint, shouldAnimate: true)
                             .zIndex(Double(segmentationImages.count + 1))
                     }

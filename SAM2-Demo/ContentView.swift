@@ -27,7 +27,6 @@ struct PointsOverlay: View {
                 .foregroundStyle(point.category.color)
                 .position(point.coordinates.toSize(imageSize))
                 .onTapGesture {
-                    print(point.coordinates)
                     if selectedTool == eraserTool {
                         selectedPoints.removeAll { $0.id == point.id }
                     }
@@ -89,7 +88,6 @@ struct SegmentationOverlay: View {
                 .opacity(segmentationImage.isHidden ? 0:0.6)
                 .modifier(RippleEffect(at: CGPoint(x: segmentationImage.cgImage.width/2, y: segmentationImage.cgImage.height/2), trigger: counter))
                 .onAppear {
-                    print("imageSize: \(imageSize)")
                     if shouldAnimate {
                         counter += 1
                     }
