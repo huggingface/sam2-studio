@@ -19,9 +19,9 @@ This demo supports images, video support will be coming later.
 
 ### Selecting Objects
 
-- You can select one or more _foreground_ points to choose objects in the image.
-- Use a _background_ point to refine your selection by removing areas.
-- You can use a _box_ to select an approximate area that contains the object you're interested in. In Box selection mode, the points are considered _refinements_ of the box, and not independent selections.
+- You can select one or more _foreground_ points to choose objects in the image. Each additional point is interpreted as a _refinement_ of the previous mask.
+- Use a _background_ point to indicate an area to be removed from the current mask.
+- You can use a _box_ to select an approximate area that contains the object you're interested in.
 
 ## Converting Models
 
