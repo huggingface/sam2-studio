@@ -109,8 +109,8 @@ class SAM2: ObservableObject {
             throw SAM2Error.modelNotLoaded
         }
         
-        let transformedCoords = try transformCoords(allPoints.map { $0.coordinates }, normalize: true, origHW: size)
-        
+        let transformedCoords = try transformCoords(allPoints.map { $0.coordinates }, normalize: false, origHW: size)
+
         // Create MLFeatureProvider with the required input format
         let pointsMultiArray = try MLMultiArray(shape: [1, NSNumber(value: allPoints.count), 2], dataType: .float32)
         let labelsMultiArray = try MLMultiArray(shape: [1, NSNumber(value: allPoints.count)], dataType: .int32)

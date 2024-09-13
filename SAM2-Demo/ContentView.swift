@@ -16,6 +16,7 @@ let logger = Logger(
 struct PointsOverlay: View {
     @Binding var selectedPoints: [SAMPoint]
     @Binding var selectedTool: SAMTool?
+    let imageSize: CGSize
 
     var body: some View {
         ForEach(selectedPoints, id: \.self) { point in
@@ -24,7 +25,7 @@ struct PointsOverlay: View {
                 .scaledToFit()
                 .frame(width: 15, height: 15)
                 .foregroundStyle(point.category.color)
-                .position(x: point.coordinates.x, y: point.coordinates.y)
+                .position(point.coordinates.toSize(imageSize))
                 .onTapGesture {
                     if selectedTool == eraserTool {
                         selectedPoints.removeAll { $0.id == point.id }
@@ -37,26 +38,28 @@ struct PointsOverlay: View {
 struct BoundingBoxesOverlay: View {
     let boundingBoxes: [SAMBox]
     let currentBox: SAMBox?
+    let imageSize: CGSize
 
     var body: some View {
         ForEach(boundingBoxes) { box in
-            BoundingBoxPath(box: box)
+            BoundingBoxPath(box: box, imageSize: imageSize)
         }
         if let currentBox = currentBox {
-            BoundingBoxPath(box: currentBox)
+            BoundingBoxPath(box: currentBox, imageSize: imageSize)
         }
     }
 }
 
 struct BoundingBoxPath: View {
     let box: SAMBox
+    let imageSize: CGSize
 
     var body: some View {
         Path { path in
-            path.move(to: box.startPoint)
-            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y))
-            path.addLine(to: box.endPoint)
-            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
+            path.move(to: box.startPoint.toSize(imageSize))
+            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y).toSize(imageSize))
+            path.addLine(to: box.endPoint.toSize(imageSize))
+            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y).toSize(imageSize))
             path.closeSubpath()
         }
         .stroke(
@@ -128,7 +131,7 @@ struct ContentView: View {
     @State private var currentBox: SAMBox?
     @State private var originalSize: NSSize?
     @State private var currentScale: CGFloat = 1.0
-    
+    @State private var visibleRect: CGRect = .zero
     
     var body: some View {
         
@@ -151,7 +154,7 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation)
                     
-                    ZoomableScrollView {
+                    ZoomableScrollView(visibleRect: $visibleRect) {
                         if let image = displayImage {
                             ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
                         } else {
