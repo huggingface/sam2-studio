@@ -16,6 +16,7 @@ let logger = Logger(
 struct PointsOverlay: View {
     @Binding var selectedPoints: [SAMPoint]
     @Binding var selectedTool: SAMTool?
+    let imageSize: CGSize
 
     var body: some View {
         ForEach(selectedPoints, id: \.self) { point in
@@ -24,8 +25,9 @@ struct PointsOverlay: View {
                 .scaledToFit()
                 .frame(width: 15, height: 15)
                 .foregroundStyle(point.category.color)
-                .position(x: point.coordinates.x, y: point.coordinates.y)
+                .position(point.coordinates.toSize(imageSize))
                 .onTapGesture {
+                    print(point.coordinates)
                     if selectedTool == eraserTool {
                         selectedPoints.removeAll { $0.id == point.id }
                     }
@@ -85,6 +87,7 @@ struct SegmentationOverlay: View {
                 .opacity(segmentationImage.isHidden ? 0:0.6)
                 .modifier(RippleEffect(at: CGPoint(x: segmentationImage.cgImage.width/2, y: segmentationImage.cgImage.height/2), trigger: counter))
                 .onAppear {
+                    print("imageSize: \(imageSize)")
                     if shouldAnimate {
                         counter += 1
                     }
