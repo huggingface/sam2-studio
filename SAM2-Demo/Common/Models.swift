@@ -141,7 +141,5 @@ struct SAMTool: Hashable {
 }
 
 // Tools
-let normalTool: SAMTool = SAMTool(name: "Selector", iconName: "cursorarrow")
 let pointTool: SAMTool = SAMTool(name: "Point", iconName: "hand.point.up.left")
 let boundingBoxTool: SAMTool = SAMTool(name: "Bounding Box", iconName: "rectangle.dashed")
-let eraserTool: SAMTool = SAMTool(name: "Eraser", iconName: "eraser")

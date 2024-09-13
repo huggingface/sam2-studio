@@ -20,17 +20,11 @@ struct PointsOverlay: View {
 
     var body: some View {
         ForEach(selectedPoints, id: \.self) { point in
-            Image(systemName: "circle.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 15, height: 15)
+            Circle()
+                .frame(width: 10, height: 10)
                 .foregroundStyle(point.category.color)
                 .position(point.coordinates.toSize(imageSize))
-                .onTapGesture {
-                    if selectedTool == eraserTool {
-                        selectedPoints.removeAll { $0.id == point.id }
-                    }
-                }
+                
         }
     }
 }
@@ -121,7 +115,7 @@ struct ContentView: View {
     @State private var error: Error?
     
     // ML Model Properties
-    var tools: [SAMTool] = [normalTool, pointTool, boundingBoxTool, eraserTool]
+    var tools: [SAMTool] = [pointTool, boundingBoxTool]
     var categories: [SAMCategory] = [.foreground, .background]
     
     @State private var selectedTool: SAMTool?
@@ -238,7 +232,7 @@ struct ContentView: View {
         
         .onAppear {
             if selectedTool == nil {
-                selectedTool = tools[1]
+                selectedTool = tools[0]
             }
             if selectedCategory == nil {
                 selectedCategory = categories.first
