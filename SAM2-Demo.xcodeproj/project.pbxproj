@@ -24,7 +24,7 @@
 
 /* Begin PBXFileReference section */
 		EBAB911F2C889D5200F57B83 /* sam2-cli */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "sam2-cli"; sourceTree = BUILT_PRODUCTS_DIR; };
-		F136320F2C73AE78009DEF15 /* SAM2-Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SAM2-Demo.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F136320F2C73AE78009DEF15 /* SAM 2 Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SAM 2 Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -93,7 +93,7 @@
 		F13632102C73AE78009DEF15 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F136320F2C73AE78009DEF15 /* SAM2-Demo.app */,
+				F136320F2C73AE78009DEF15 /* SAM 2 Studio.app */,
 				EBAB911F2C889D5200F57B83 /* sam2-cli */,
 			);
 			name = Products;
@@ -144,7 +144,7 @@
 			packageProductDependencies = (
 			);
 			productName = "SAM2-Demo";
-			productReference = F136320F2C73AE78009DEF15 /* SAM2-Demo.app */;
+			productReference = F136320F2C73AE78009DEF15 /* SAM 2 Studio.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -293,7 +293,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -352,7 +352,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MACOSX_DEPLOYMENT_TARGET = 14.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -380,8 +380,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "co.huggingface.SAM2-Demo";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "co.huggingface.sam-2-studio";
+				PRODUCT_NAME = "SAM 2 Studio";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -407,8 +407,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "co.huggingface.SAM2-Demo";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = "co.huggingface.sam-2-studio";
+				PRODUCT_NAME = "SAM 2 Studio";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
