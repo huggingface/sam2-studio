@@ -131,7 +131,7 @@ struct ContentView: View {
     @State private var currentBox: SAMBox?
     @State private var originalSize: NSSize?
     @State private var currentScale: CGFloat = 1.0
-    
+    @State private var visibleRect: CGRect = .zero
     
     var body: some View {
         
@@ -154,7 +154,7 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation)
                     
-                    ZoomableScrollView {
+                    ZoomableScrollView(visibleRect: $visibleRect) {
                         if let image = displayImage {
                             ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
                         } else {
