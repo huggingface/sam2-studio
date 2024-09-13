@@ -52,9 +52,9 @@ struct ImageView: View {
                     }
                 })
                 .overlay {
-                    PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool)
-                    BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox)
-                    
+                    PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool, imageSize: imageSize)
+                    BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox, imageSize: imageSize)
+
                     if !segmentationImages.isEmpty {
                         ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
                             SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize, shouldAnimate: false)
@@ -88,9 +88,9 @@ struct ImageView: View {
                 guard selectedTool == boundingBoxTool else { return }
                 
                 if currentBox == nil {
-                    currentBox = SAMBox(startPoint: value.startLocation, endPoint: value.location, category: selectedCategory!)
+                    currentBox = SAMBox(startPoint: value.startLocation.fromSize(imageSize), endPoint: value.location.fromSize(imageSize), category: selectedCategory!)
                 } else {
-                    currentBox?.endPoint = value.location
+                    currentBox?.endPoint = value.location.fromSize(imageSize)
                 }
             }
             .onEnded { value in
@@ -98,7 +98,7 @@ struct ImageView: View {
                 
                 if let box = currentBox {
                     boundingBoxes.append(box)
-                    animationPoint = box.midpoint
+                    animationPoint = box.midpoint.toSize(imageSize)
                     currentBox = nil
                 }
             }
@@ -112,7 +112,7 @@ struct ImageView: View {
     }
     
     private func placePoint(at coordinates: CGPoint) {
-        let samPoint = SAMPoint(coordinates: coordinates, category: selectedCategory!)
+        let samPoint = SAMPoint(coordinates: coordinates.fromSize(imageSize), category: selectedCategory!)
         self.selectedPoints.append(samPoint)
     }
     
@@ -138,3 +138,12 @@ struct ImageView: View {
     ContentView()
 }
 
+extension CGPoint {
+    func fromSize(_ size: CGSize) -> CGPoint {
+        CGPoint(x: x / size.width, y: y / size.height)
+    }
+
+    func toSize(_ size: CGSize) -> CGPoint {
+        CGPoint(x: x * size.width, y: y * size.height)
+    }
+}

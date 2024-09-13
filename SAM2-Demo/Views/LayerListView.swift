@@ -31,8 +31,10 @@ struct LayerListView: View {
                 }
                 .onDelete(perform: delete)
                 .onMove(perform: move)
+
                 if let currentSegmentation = currentSegmentation {
                     AnnotationListView(segmentation: .constant(currentSegmentation))
+                        .tag(currentSegmentation.id)
                 }
                 
                 

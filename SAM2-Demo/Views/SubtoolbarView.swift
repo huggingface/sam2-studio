@@ -17,7 +17,7 @@ struct SubToolbar: View {
         if selectedPoints.count > 0 || boundingBoxes.count > 0 {
             ZStack {
                 Rectangle()
-                    .fill(.fill.secondary)
+                    .fill(.regularMaterial)
                     .frame(height: 30)
                 
                 HStack {

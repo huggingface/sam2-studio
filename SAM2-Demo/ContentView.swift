@@ -16,20 +16,15 @@ let logger = Logger(
 struct PointsOverlay: View {
     @Binding var selectedPoints: [SAMPoint]
     @Binding var selectedTool: SAMTool?
-
+    let imageSize: CGSize
+    
     var body: some View {
         ForEach(selectedPoints, id: \.self) { point in
-            Image(systemName: "circle.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 15, height: 15)
+            Circle()
+                .frame(width: 10, height: 10)
                 .foregroundStyle(point.category.color)
-                .position(x: point.coordinates.x, y: point.coordinates.y)
-                .onTapGesture {
-                    if selectedTool == eraserTool {
-                        selectedPoints.removeAll { $0.id == point.id }
-                    }
-                }
+                .position(point.coordinates.toSize(imageSize))
+            
         }
     }
 }
@@ -37,26 +32,28 @@ struct PointsOverlay: View {
 struct BoundingBoxesOverlay: View {
     let boundingBoxes: [SAMBox]
     let currentBox: SAMBox?
-
+    let imageSize: CGSize
+    
     var body: some View {
         ForEach(boundingBoxes) { box in
-            BoundingBoxPath(box: box)
+            BoundingBoxPath(box: box, imageSize: imageSize)
         }
         if let currentBox = currentBox {
-            BoundingBoxPath(box: currentBox)
+            BoundingBoxPath(box: currentBox, imageSize: imageSize)
         }
     }
 }
 
 struct BoundingBoxPath: View {
     let box: SAMBox
-
+    let imageSize: CGSize
+    
     var body: some View {
         Path { path in
-            path.move(to: box.startPoint)
-            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y))
-            path.addLine(to: box.endPoint)
-            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y))
+            path.move(to: box.startPoint.toSize(imageSize))
+            path.addLine(to: CGPoint(x: box.endPoint.x, y: box.startPoint.y).toSize(imageSize))
+            path.addLine(to: box.endPoint.toSize(imageSize))
+            path.addLine(to: CGPoint(x: box.startPoint.x, y: box.endPoint.y).toSize(imageSize))
             path.closeSubpath()
         }
         .stroke(
@@ -74,21 +71,21 @@ struct SegmentationOverlay: View {
     @State var counter: Int = 0
     var origin: CGPoint = .zero
     var shouldAnimate: Bool = false
-
+    
     var body: some View {
         let nsImage = NSImage(cgImage: segmentationImage.cgImage, size: imageSize)
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFit()
-                .allowsHitTesting(false)
-                .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(segmentationImage.isHidden ? 0:0.6)
-                .modifier(RippleEffect(at: CGPoint(x: segmentationImage.cgImage.width/2, y: segmentationImage.cgImage.height/2), trigger: counter))
-                .onAppear {
-                    if shouldAnimate {
-                        counter += 1
-                    }
+        Image(nsImage: nsImage)
+            .resizable()
+            .scaledToFit()
+            .allowsHitTesting(false)
+            .frame(width: imageSize.width, height: imageSize.height)
+            .opacity(segmentationImage.isHidden ? 0:0.6)
+            .modifier(RippleEffect(at: CGPoint(x: segmentationImage.cgImage.width/2, y: segmentationImage.cgImage.height/2), trigger: counter))
+            .onAppear {
+                if shouldAnimate {
+                    counter += 1
                 }
+            }
     }
 }
 
@@ -118,7 +115,7 @@ struct ContentView: View {
     @State private var error: Error?
     
     // ML Model Properties
-    var tools: [SAMTool] = [normalTool, pointTool, boundingBoxTool, eraserTool]
+    var tools: [SAMTool] = [pointTool, boundingBoxTool]
     var categories: [SAMCategory] = [.foreground, .background]
     
     @State private var selectedTool: SAMTool?
@@ -128,7 +125,7 @@ struct ContentView: View {
     @State private var currentBox: SAMBox?
     @State private var originalSize: NSSize?
     @State private var currentScale: CGFloat = 1.0
-    
+    @State private var visibleRect: CGRect = .zero
     
     var body: some View {
         
@@ -143,22 +140,22 @@ struct ContentView: View {
                     }
                 }, label: {
                     Text("New Mask")
-                        
                 }).padding()
             }
         }, detail: {
             ZStack {
-                VStack(spacing: 0) {
-                    SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation)
-                    
-                    ZoomableScrollView {
-                        if let image = displayImage {
-                            ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
-                        } else {
-                            ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
-                        }
+                ZoomableScrollView(visibleRect: $visibleRect) {
+                    if let image = displayImage {
+                        ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
+                    } else {
+                        ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
                     }
                 }
+                VStack(spacing: 0) {
+                    SubToolbar(selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation)
+                    Spacer()
+                }
+                
             }
         })
         .inspector(isPresented: $showInspector, content: {
@@ -235,14 +232,14 @@ struct ContentView: View {
         
         .onAppear {
             if selectedTool == nil {
-                selectedTool = tools[1]
+                selectedTool = tools[0]
             }
             if selectedCategory == nil {
                 selectedCategory = categories.first
             }
-           
+            
         }
-
+        
         // MARK: - Image encoding
         .onChange(of: displayImage) {
             segmentationImages = []
@@ -300,8 +297,11 @@ struct ContentView: View {
                       ) { result in
                           if case .success(let url) = result {
                               exportURL = url
-                              let selectedToExport = segmentationImages.filter { segmentation in
+                              var selectedToExport = segmentationImages.filter { segmentation in
                                   selectedSegmentations.contains(segmentation.id)
+                              }
+                              if let currentSegmentation {
+                                  selectedToExport.append(currentSegmentation)
                               }
                               exportSegmentations(selectedToExport, to: url)
                           }
@@ -363,7 +363,7 @@ struct ContentView: View {
         currentSegmentation = nil
     }
     
-
+    
 }
 
 struct SizePreferenceKey: PreferenceKey {

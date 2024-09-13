@@ -44,16 +44,25 @@ struct MaskEditor: View {
     
     private func updateSelectedSegmentationsColor(_ newColor: Color) {
         for id in selectedSegmentations {
-            if let index = segmentationImages.firstIndex(where: { $0.id == id }) {
+            for index in segmentationImages.indices where segmentationImages[index].id == id {
                 segmentationImages[index].tintColor = newColor
+            }
+            if currentSegmentation?.id == id {
+                currentSegmentation?.tintColor = newColor
             }
         }
     }
     
     private func getColorOfFirstSelectedSegmentation() -> Color {
-        if let firstSelectedId = selectedSegmentations.first,
-           let firstSelectedSegmentation = segmentationImages.first(where: { $0.id == firstSelectedId }) {
-            return firstSelectedSegmentation.tintColor
+        if let firstSelectedId = selectedSegmentations.first {
+            if let firstSelectedSegmentation = segmentationImages.first(where: { $0.id == firstSelectedId }) {
+                return firstSelectedSegmentation.tintColor
+            } else {
+                if let currentSegmentation {
+                    return currentSegmentation.tintColor
+                }
+            }
+            
         }
         return bgColor // Return default color if no segmentation is selected
     }
