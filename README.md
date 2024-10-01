@@ -15,10 +15,12 @@ Download the compiled version [here!](https://huggingface.co/coreml-projects/sam
 If you prefer to compile it yourself or want to use a larger model, simply download the repo, compile with Xcode and run. 
 The app comes with the Small version of the model, but you can replace it with one of the supported models:
 
-- [SAM 2 Tiny](https://huggingface.co/apple/coreml-sam2-tiny)
-- [SAM 2 Small](https://huggingface.co/apple/coreml-sam2-small)
-- [SAM 2 Base](https://huggingface.co/apple/coreml-sam2-baseplus)
-- [SAM 2 Large](https://huggingface.co/apple/coreml-sam2-large)
+- [SAM 2.1 Tiny](https://huggingface.co/apple/coreml-sam2.1-tiny)
+- [SAM 2.1 Small](https://huggingface.co/apple/coreml-sam2.1-small)
+- [SAM 2.1 Base](https://huggingface.co/apple/coreml-sam2.1-baseplus)
+- [SAM 2.1 Large](https://huggingface.co/apple/coreml-sam2.1-large)
+
+For the older models, please check out the [Apple](https://huggingface.co/apple) organisation on HuggingFace.
 
 This demo supports images, video support will be coming later.
 
