@@ -122,8 +122,10 @@ struct ImageView: View {
                 try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
                 if let mask = try await sam2.getMask(for: originalSize ?? .zero) {
                     DispatchQueue.main.async {
+                        let colorSet = self.segmentationImages.map { $0.tintColor };
+                        let furthestColor = furthestColor(from: colorSet, among: SAMSegmentation.candidateColors)
                         let segmentationNumber = segmentationImages.count
-                        let segmentationOverlay = SAMSegmentation(image: mask, title: "Untitled \(segmentationNumber + 1)")
+                        let segmentationOverlay = SAMSegmentation(image: mask, tintColor: furthestColor, title: "Untitled \(segmentationNumber + 1)")
                         self.currentSegmentation = segmentationOverlay
                     }
                 }
