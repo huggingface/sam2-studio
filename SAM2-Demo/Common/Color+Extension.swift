@@ -39,9 +39,11 @@ func colorDistance(_ color1: Color, _ color2: Color) -> Double {
     return sqrt(rDiff*rDiff + gDiff*gDiff + bDiff*bDiff)
 }
 
+// Determine the Euclidean distance of all candidates from current set of colors.
+// Find the **maximum min-distance** from all current colors.
 func furthestColor(from existingColors: [Color], among candidateColors: [Color]) -> Color {
     var maxMinDistance: Double = 0
-    var furthestColor = SAMSegmentation.defaultColor;
+    var furthestColor: Color = SAMSegmentation.randomCandidateColor() ?? SAMSegmentation.defaultColor
 
     for candidate in candidateColors {
         let minDistance = existingColors.map { colorDistance(candidate, $0) }.min() ?? 0

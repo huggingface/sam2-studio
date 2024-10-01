@@ -121,6 +121,10 @@ struct SAMSegmentation: Hashable, Identifiable {
         Color.yellow,
         Color.purple,
         Color.orange,
+        Color.teal,
+        Color.indigo,
+        Color.mint,
+        Color.pink,
     ]
 
     init(image: CIImage, tintColor: Color = Color(.sRGB, red: 30/255, green: 144/255, blue: 1), title: String = "", firstAppearance: Int? = nil, isHidden: Bool = false) {
@@ -139,6 +143,10 @@ struct SAMSegmentation: Hashable, Identifiable {
         monochromeFilter.color = ciColor!
         monochromeFilter.intensity = 1.0
         tintedImage = monochromeFilter.outputImage
+    }
+    
+    static func randomCandidateColor() -> Color? {
+        Self.candidateColors.randomElement()
     }
 
     var cgImage: CGImage {
