@@ -136,6 +136,7 @@ struct ContentView: View {
                 Button(action: {
                     if let currentSegmentation = self.currentSegmentation {
                         self.segmentationImages.append(currentSegmentation)
+
                         self.reset()
                     }
                 }, label: {
