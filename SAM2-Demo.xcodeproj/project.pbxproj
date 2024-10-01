@@ -38,9 +38,9 @@
 				"Common/MLMultiArray+Image.swift",
 				Common/Models.swift,
 				Common/SAM2.swift,
-				SAM2SmallImageEncoderFLOAT16.mlpackage,
-				SAM2SmallMaskDecoderFLOAT16.mlpackage,
-				SAM2SmallPromptEncoderFLOAT16.mlpackage,
+				SAM2_1SmallImageEncoderFLOAT16.mlpackage,
+				SAM2_1SmallMaskDecoderFLOAT16.mlpackage,
+				SAM2_1SmallPromptEncoderFLOAT16.mlpackage,
 			);
 			target = EBAB911E2C889D5200F57B83 /* sam2-cli */;
 		};
