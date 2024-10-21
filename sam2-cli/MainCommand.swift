@@ -44,10 +44,17 @@ struct MainCommand: AsyncParsableCommand {
     @Option(name: [.long, .customShort("k")], help: "The output file name for the segmentation mask.")
     var mask: String? = nil
 
+    @Option(name: .shortAndLong, help: "The directory containing the model files.")
+    var modelDirectory: String? = nil
+
     @MainActor
     mutating func run() async throws {
-        // TODO: specify directory with loadable .mlpackages instead
-        let sam = try await SAM2.load()
+        let sam: SAM2
+        if let modelDirectory = modelDirectory {
+            sam = try await SAM2.load(from: URL(fileURLWithPath: modelDirectory))
+        } else {
+            sam = try await SAM2.load()
+        }
         print("Models loaded in: \(String(describing: sam.initializationTime))")
         let targetSize = sam.inputSize
 
