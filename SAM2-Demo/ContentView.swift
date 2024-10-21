@@ -127,6 +127,11 @@ struct ContentView: View {
     @State private var currentScale: CGFloat = 1.0
     @State private var visibleRect: CGRect = .zero
     
+    // Video Segmentation
+    @State private var videoURL: URL?
+    @State private var isImportingVideo: Bool = false
+    @State private var textPrompt: String = ""
+    
     var body: some View {
         
         NavigationSplitView(sidebar: {
@@ -148,8 +153,16 @@ struct ContentView: View {
                 ZoomableScrollView(visibleRect: $visibleRect) {
                     if let image = displayImage {
                         ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
+                    } else if let videoURL = videoURL {
+                        VStack {
+                            VideoView(videoURL: videoURL)
+                            TextPromptView { prompt in
+                                textPrompt = prompt
+                                performVideoSegmentation()
+                            }
+                        }
                     } else {
-                        ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
+                        ContentUnavailableView("No Image or Video Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo or video to get started."))
                     }
                 }
                 VStack(spacing: 0) {
@@ -225,6 +238,12 @@ struct ContentView: View {
                     }, label: {
                         Label("From Files", systemImage: "folder.fill")
                     })
+                    
+                    Button(action: {
+                        isImportingVideo = true
+                    }, label: {
+                        Label("From Videos", systemImage: "video.fill")
+                    })
                 } label: {
                     Label("Import", systemImage: "photo.badge.plus")
                 }
@@ -283,6 +302,18 @@ struct ContentView: View {
                 self.selectedPoints.removeAll()
                 self.imageURL = file
                 loadImage(from: file)
+            case .failure(let error):
+                logger.error("File import error: \(error.localizedDescription)")
+                self.error = error
+            }
+        }
+        
+        // MARK: - Video Importer
+        .fileImporter(isPresented: $isImportingVideo,
+                      allowedContentTypes: [.movie]) { result in
+            switch result {
+            case .success(let file):
+                self.videoURL = file
             case .failure(let error):
                 logger.error("File import error: \(error.localizedDescription)")
                 self.error = error
@@ -364,7 +395,27 @@ struct ContentView: View {
         currentSegmentation = nil
     }
     
-    
+    private func performVideoSegmentation() {
+        Task {
+            do {
+                if let videoURL = videoURL {
+                    try await sam2.getVideoEncoding(from: videoURL)
+                    try await sam2.getTextPromptEncoding(from: textPrompt)
+                    if let mask = try await sam2.getMask(for: originalSize ?? .zero) {
+                        DispatchQueue.main.async {
+                            let colorSet = self.segmentationImages.map { $0.tintColor };
+                            let furthestColor = furthestColor(from: colorSet, among: SAMSegmentation.candidateColors)
+                            let segmentationNumber = segmentationImages.count
+                            let segmentationOverlay = SAMSegmentation(image: mask, tintColor: furthestColor, title: "Untitled \(segmentationNumber + 1)")
+                            self.currentSegmentation = segmentationOverlay
+                        }
+                    }
+                }
+            } catch {
+                self.error = error
+            }
+        }
+    }
 }
 
 struct SizePreferenceKey: PreferenceKey {

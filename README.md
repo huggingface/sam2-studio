@@ -22,13 +22,22 @@ The app comes with the Small version of the model, but you can replace it with o
 
 For the older models, please check out the [Apple](https://huggingface.co/apple) organisation on HuggingFace.
 
-This demo supports images, video support will be coming later.
+This demo supports images and videos. 
 
 ### Selecting Objects
 
 - You can select one or more _foreground_ points to choose objects in the image. Each additional point is interpreted as a _refinement_ of the previous mask.
 - Use a _background_ point to indicate an area to be removed from the current mask.
 - You can use a _box_ to select an approximate area that contains the object you're interested in.
+
+### Video Segmentation with Text Prompts
+
+To use the video segmentation feature with text prompts, follow these steps:
+
+1. Import a video file into the app.
+2. Enter a text prompt describing the object you want to segment in the video.
+3. The app will process the video frames and generate segmentation masks based on the text prompt.
+4. You can view and edit the segmentation results frame by frame.
 
 ## Converting Models
 

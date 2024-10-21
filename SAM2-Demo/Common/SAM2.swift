@@ -1,16 +1,10 @@
-//
-//  SAM2.swift
-//  SAM2-Demo
-//
-//  Created by Cyril Zakka on 8/20/24.
-//
-
 import SwiftUI
 import CoreML
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import Combine
 import UniformTypeIdentifiers
+import AVFoundation
 
 @MainActor
 class SAM2: ObservableObject {
@@ -24,6 +18,7 @@ class SAM2: ObservableObject {
     private var imageEncoderModel: SAM2_1SmallImageEncoderFLOAT16?
     private var promptEncoderModel: SAM2_1SmallPromptEncoderFLOAT16?
     private var maskDecoderModel: SAM2_1SmallMaskDecoderFLOAT16?
+    private var textModel: SAM2_1SmallTextEncoderFLOAT16?
 
     // TODO: examine model inputs instead
     var inputSize: CGSize { CGSize(width: 1024, height: 1024) }
@@ -42,11 +37,12 @@ class SAM2: ObservableObject {
         do {
             let configuration = MLModelConfiguration()
             configuration.computeUnits = .cpuAndGPU
-            let (imageEncoder, promptEncoder, maskDecoder) = try await Task.detached(priority: .userInitiated) {
+            let (imageEncoder, promptEncoder, maskDecoder, textEncoder) = try await Task.detached(priority: .userInitiated) {
                 let imageEncoder = try SAM2_1SmallImageEncoderFLOAT16(configuration: configuration)
                 let promptEncoder = try SAM2_1SmallPromptEncoderFLOAT16(configuration: configuration)
                 let maskDecoder = try SAM2_1SmallMaskDecoderFLOAT16(configuration: configuration)
-                return (imageEncoder, promptEncoder, maskDecoder)
+                let textEncoder = try SAM2_1SmallTextEncoderFLOAT16(configuration: configuration)
+                return (imageEncoder, promptEncoder, maskDecoder, textEncoder)
             }.value
             
             let endTime = CFAbsoluteTimeGetCurrent()
@@ -56,6 +52,7 @@ class SAM2: ObservableObject {
             self.imageEncoderModel = imageEncoder
             self.promptEncoderModel = promptEncoder
             self.maskDecoderModel = maskDecoder
+            self.textModel = textEncoder
             print("Initialized models in \(String(format: "%.4f", self.initializationTime!)) seconds")
         } catch {
             print("Failed to initialize models: \(error)")
@@ -204,6 +201,27 @@ class SAM2: ObservableObject {
         let scale = CGAffineTransform(scaleX: size.width / image.extent.width,
                                       y: size.height / image.extent.height)
         return image.transformed(by: scale).applyingThreshold(threshold)
+    }
+
+    func getVideoEncoding(from pixelBuffer: CVPixelBuffer) async throws {
+        guard let model = imageEncoderModel else {
+            throw SAM2Error.modelNotLoaded
+        }
+        
+        let encoding = try model.prediction(image: pixelBuffer)
+        self.imageEncodings = encoding
+    }
+
+    func getTextPromptEncoding(from textPrompt: String) async throws {
+        guard let model = textModel else {
+            throw SAM2Error.modelNotLoaded
+        }
+        
+        let textPromptArray = try MLMultiArray(shape: [1, 1], dataType: .string)
+        textPromptArray[0] = textPrompt as NSString
+        
+        let encoding = try model.prediction(textPrompt: textPromptArray)
+        self.promptEncodings = encoding
     }
 }
 

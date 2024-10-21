@@ -4,6 +4,7 @@ import CoreML
 import ImageIO
 import UniformTypeIdentifiers
 import Combine
+import AVFoundation
 
 let context = CIContext(options: [.outputColorSpace: NSNull()])
 
@@ -29,9 +30,14 @@ struct MainCommand: AsyncParsableCommand {
     )
 
     @Option(name: .shortAndLong, help: "The input image file.")
-    var input: String
+    var input: String?
 
-    // TODO: multiple points
+    @Option(name: .shortAndLong, help: "The input video file.")
+    var video: String?
+
+    @Option(name: .shortAndLong, help: "The text prompt for segmentation.")
+    var textPrompt: String?
+
     @Option(name: .shortAndLong, parsing: .upToNextOption, help: "List of input coordinates in format 'x,y'. Coordinates are relative to the input image size. Separate multiple entries with spaces, but don't use spaces between the coordinates.")
     var points: [CGPoint]
 
@@ -46,28 +52,35 @@ struct MainCommand: AsyncParsableCommand {
 
     @MainActor
     mutating func run() async throws {
-        // TODO: specify directory with loadable .mlpackages instead
         let sam = try await SAM2.load()
         print("Models loaded in: \(String(describing: sam.initializationTime))")
+
+        if let input = input {
+            try await processImage(input, with: sam)
+        } else if let video = video, let textPrompt = textPrompt {
+            try await processVideo(video, with: sam, textPrompt: textPrompt)
+        } else {
+            print("Please provide either an image input or a video input with a text prompt.")
+            throw ExitCode(EXIT_FAILURE)
+        }
+    }
+
+    private func processImage(_ input: String, with sam: SAM2) async throws {
         let targetSize = sam.inputSize
 
-        // Load the input image
         guard let inputImage = CIImage(contentsOf: URL(filePath: input), options: [.colorSpace: NSNull()]) else {
             print("Failed to load image.")
             throw ExitCode(EXIT_FAILURE)
         }
         print("Original image size \(inputImage.extent)")
 
-        // Resize the image to match the model's expected input
         let resizedImage = inputImage.resized(to: targetSize)
 
-        // Convert to a pixel buffer
         guard let pixelBuffer = context.render(resizedImage, pixelFormat: kCVPixelFormatType_32ARGB) else {
             print("Failed to create pixel buffer for input image.")
             throw ExitCode(EXIT_FAILURE)
         }
 
-        // Execute the model
         let clock = ContinuousClock()
         let start = clock.now
         try await sam.getImageEncoding(from: pixelBuffer)
@@ -85,17 +98,46 @@ struct MainCommand: AsyncParsableCommand {
         let maskDuration = clock.now - startMask
         print("Prompt encoding and mask generation took \(maskDuration.formatted(.units(allowed: [.seconds, .milliseconds])))")
 
-        // Write masks
         if let mask = mask {
             context.writePNG(maskImage, to: URL(filePath: mask))
         }
 
-        // Overlay over original and save
         guard let outputImage = maskImage.withAlpha(0.6)?.composited(over: inputImage) else {
             print("Failed to blend mask.")
             throw ExitCode(EXIT_FAILURE)
         }
         context.writePNG(outputImage, to: URL(filePath: output))
+    }
+
+    private func processVideo(_ video: String, with sam: SAM2, textPrompt: String) async throws {
+        let videoURL = URL(filePath: video)
+        let asset = AVAsset(url: videoURL)
+        let reader = try AVAssetReader(asset: asset)
+        guard let videoTrack = asset.tracks(withMediaType: .video).first else {
+            print("Failed to load video track.")
+            throw ExitCode(EXIT_FAILURE)
+        }
+
+        let readerOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB
+        ])
+        reader.add(readerOutput)
+        reader.startReading()
+
+        var frameCount = 0
+        while let sampleBuffer = readerOutput.copyNextSampleBuffer(), let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+            frameCount += 1
+            try await sam.getVideoEncoding(from: pixelBuffer)
+            try await sam.getTextPromptEncoding(from: textPrompt)
+            guard let maskImage = try await sam.getMask(for: videoTrack.naturalSize) else {
+                throw ExitCode(EXIT_FAILURE)
+            }
+
+            let outputURL = URL(filePath: "\(output)_frame_\(frameCount).png")
+            context.writePNG(maskImage, to: outputURL)
+        }
+
+        print("Processed \(frameCount) frames.")
     }
 }
 
