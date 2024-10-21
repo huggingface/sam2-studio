@@ -1,10 +1,3 @@
-//
-//  SAM2.swift
-//  SAM2-Demo
-//
-//  Created by Cyril Zakka on 8/20/24.
-//
-
 import SwiftUI
 import CoreML
 import CoreImage
@@ -83,6 +76,12 @@ class SAM2: ObservableObject {
 
     static func load() async throws -> SAM2 {
         try await SAM2().ensureModelsAreLoaded()
+    }
+
+    static func load(from directory: URL) async throws -> SAM2 {
+        let sam2 = SAM2()
+        try await sam2.downloadModelSnapshot(from: directory)
+        return try await sam2.ensureModelsAreLoaded()
     }
 
     func getImageEncoding(from pixelBuffer: CVPixelBuffer) async throws {
@@ -204,6 +203,14 @@ class SAM2: ObservableObject {
         let scale = CGAffineTransform(scaleX: size.width / image.extent.width,
                                       y: size.height / image.extent.height)
         return image.transformed(by: scale).applyingThreshold(threshold)
+    }
+
+    private func downloadModelSnapshot(from directory: URL) async throws {
+        let repo = Repo(name: "model-repo", owner: "huggingface")
+        let snapshotURL = try await snapshot(from: repo, matching: ["*.mlpackage"]) { progress in
+            print("Download progress: \(progress.fractionCompleted * 100)%")
+        }
+        try FileManager.default.moveItem(at: snapshotURL, to: directory)
     }
 }
 
