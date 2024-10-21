@@ -47,11 +47,16 @@ struct MainCommand: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "The directory containing the model files.")
     var modelDirectory: String? = nil
 
+    @Option(name: .shortAndLong, help: "The directory to download the model snapshot.")
+    var downloadDirectory: String? = nil
+
     @MainActor
     mutating func run() async throws {
         let sam: SAM2
         if let modelDirectory = modelDirectory {
             sam = try await SAM2.load(from: URL(fileURLWithPath: modelDirectory))
+        } else if let downloadDirectory = downloadDirectory {
+            sam = try await SAM2.load(from: URL(fileURLWithPath: downloadDirectory))
         } else {
             sam = try await SAM2.load()
         }
