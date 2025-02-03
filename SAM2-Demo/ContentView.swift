@@ -111,7 +111,16 @@ struct ContentView: View {
     // Photos Picker
     @State private var isImportingFromPhotos: Bool = false
     @State private var selectedItem: PhotosPickerItem?
-    
+
+    @State private var isVideoPlayMode: Bool = false
+    @State private var isProcessing: Bool = false
+    @State private var videoTimer: Timer?
+
+    // For video navigation
+    @State private var isLoading: Bool = false
+    @State private var isPlaying: Bool = false
+    @State private var playbackSpeed: Double = 1.0
+
     @State private var error: Error?
     
     // ML Model Properties
@@ -129,27 +138,76 @@ struct ContentView: View {
     
     var body: some View {
         
-        NavigationSplitView(sidebar: {
-            VStack {
-                LayerListView(segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations, currentSegmentation: $currentSegmentation)
-                Spacer()
-                Button(action: {
-                    if let currentSegmentation = self.currentSegmentation {
-                        self.segmentationImages.append(currentSegmentation)
+        NavigationSplitView(
+            sidebar: {
+                VStack {
+                    LayerListView(segmentationImages: $segmentationImages, selectedSegmentations: $selectedSegmentations, currentSegmentation: $currentSegmentation)
+                    Spacer()
+                    Button(action: {
+                        if let currentSegmentation = self.currentSegmentation {
+                            self.segmentationImages.append(currentSegmentation)
+                            
+                            self.reset()
+                        }
+                    }, label: {
+                        Text("New Mask")
+                    }).padding()
 
-                        self.reset()
+                    if sam2.isVideoMode && !selectedPoints.isEmpty {
+                        Button(action: {
+                            Task {
+                                isProcessing = true
+                                do {
+                                    try await sam2.propagateInVideo()
+                                } catch {
+                                    logger.error("Propagation error: \(error.localizedDescription)")
+                                    self.error = error
+                                }
+                                isProcessing = false
+                            }
+                        }, label: {
+                            Text("Propagate")
+                        })
+                        .disabled(isProcessing)
                     }
-                }, label: {
-                    Text("New Mask")
-                }).padding()
-            }
-        }, detail: {
-            ZStack {
-                ZoomableScrollView(visibleRect: $visibleRect) {
-                    if let image = displayImage {
-                        ImageView(image: image, currentScale: $currentScale, selectedTool: $selectedTool, selectedCategory: $selectedCategory, selectedPoints: $selectedPoints, boundingBoxes: $boundingBoxes, currentBox: $currentBox, segmentationImages: $segmentationImages, currentSegmentation: $currentSegmentation, imageSize: $imageSize, originalSize: $originalSize, sam2: sam2)
+                }
+            },
+            detail: {
+                ZStack {
+                    ZoomableScrollView(visibleRect: $visibleRect) {
+                        if sam2.isVideoMode {
+                            VideoPlayerView(
+                                sam2: sam2,
+                                imageSize: $imageSize,
+                                originalSize: $originalSize,
+                                selectedPoints: $selectedPoints,
+                                boundingBoxes: $boundingBoxes,
+                                segmentationImages: $segmentationImages,
+                                selectedTool: $selectedTool,
+                                selectedCategory: $selectedCategory,
+                                currentBox: $currentBox
+                            )
+                        } else if let image = displayImage {
+                            ImageView(
+                                image: image,
+                                currentScale: $currentScale,
+                                selectedTool: $selectedTool,
+                                selectedCategory: $selectedCategory,
+                                selectedPoints: $selectedPoints,
+                                boundingBoxes: $boundingBoxes,
+                                currentBox: $currentBox,
+                                segmentationImages: $segmentationImages,
+                                currentSegmentation: currentSegmentation,
+                                imageSize: $imageSize,
+                                originalSize: $originalSize,
+                                sam2: sam2
+                            )
                     } else {
-                        ContentUnavailableView("No Image Loaded", systemImage: "photo.fill.on.rectangle.fill", description: Text("Please import a photo to get started."))
+                        ContentUnavailableView(
+                            "No Image Loaded",
+                            systemImage: "photo.fill.on.rectangle.fill",
+                            description: Text("Please import a photo to get started.")
+                        )
                     }
                 }
                 VStack(spacing: 0) {
@@ -229,6 +287,45 @@ struct ContentView: View {
                     Label("Import", systemImage: "photo.badge.plus")
                 }
             }
+
+            ToolbarItemGroup(placement: .principal) {
+                if sam2.isVideoMode {
+                    // Video navigation controls
+                    /*HStack(spacing: 12) {
+                        Button(action: {
+                            if sam2.currentFrameIndex > 0 {
+                                Task {
+                                    await processFrame(sam2.currentFrameIndex - 1)
+                                }
+                            }
+                        }) {
+                            Image(systemName: "backward.frame")
+                        }
+                        .disabled(isProcessing || sam2.currentFrameIndex <= 0)
+
+                        Button(action: {
+                            togglePlayback()
+                        }) {
+                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        }
+                        .disabled(isProcessing)
+
+                        Button(action: {
+                            if sam2.currentFrameIndex < sam2.videoFrames.count - 1 {
+                                Task {
+                                    await processFrame(sam2.currentFrameIndex + 1)
+                                }
+                            }
+                        }) {
+                            Image(systemName: "forward.frame")
+                        }
+                        .disabled(isProcessing || sam2.currentFrameIndex >= sam2.videoFrames.count - 1)
+
+                        Text("\(sam2.currentFrameIndex + 1)/\(sam2.videoFrames.count)")
+                            .monospacedDigit()
+                    }*/
+                }
+            }
         }
         
         .onAppear {
@@ -276,19 +373,24 @@ struct ContentView: View {
         
         // MARK: - File Importer
         .fileImporter(isPresented: $isImportingFromFiles,
-                      allowedContentTypes: [.image]) { result in
+                      allowedContentTypes: [.image, .movie]) { result in
             switch result {
             case .success(let file):
                 self.selectedItem = nil
                 self.selectedPoints.removeAll()
                 self.imageURL = file
-                loadImage(from: file)
+
+                if file.pathExtension.lowercased() == "mp4" {
+                    loadVideo(from: file)
+                } else {
+                    loadImage(from: file)
+                }
             case .failure(let error):
                 logger.error("File import error: \(error.localizedDescription)")
                 self.error = error
             }
         }
-        
+
         // MARK: - File exporter
                       .fileExporter(
                         isPresented: $exportMaskToPNG,
@@ -332,7 +434,42 @@ struct ContentView: View {
             self.error = error
         }
     }
-    
+
+    private func loadVideo(from url: URL) {
+        Task {
+            isLoading = true
+            do {
+                try await sam2.loadVideo(from: url)
+                if let firstFrame = sam2.videoFrames.first {
+                    displayImage = firstFrame
+                }
+            } catch {
+                logger.error("Video load error: \(error.localizedDescription)")
+                self.error = error
+            }
+            isLoading = false
+        }
+    }
+
+    private func togglePlayback() {
+        isPlaying.toggle()
+        if isPlaying {
+            // Start playback timer
+            videoTimer = Timer.scheduledTimer(withTimeInterval: 1.0/6.0, repeats: true) { _ in
+                if sam2.currentFrameIndex < sam2.videoFrames.count - 1 {
+
+                } else {
+                    isPlaying = false
+                    videoTimer?.invalidate()
+                }
+            }
+        } else {
+            // Stop playback
+            videoTimer?.invalidate()
+            videoTimer = nil
+        }
+    }
+
     func exportSegmentations(_ segmentations: [SAMSegmentation], to directory: URL) {
         let fileManager = FileManager.default
         

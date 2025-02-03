@@ -22,6 +22,7 @@
 
 import Accelerate
 import CoreML
+import CoreImage
 
 public func clamp<T: Comparable>(_ x: T, min: T, max: T) -> T {
   if x < min { return min }
@@ -306,4 +307,53 @@ public func createCGImage(fromFloatArray features: MLMultiArray,
   } else {
     return nil
   }
+}
+
+extension MLMultiArray {
+
+    // Non-overlapping constraints function similar to PyTorch's _apply_non_overlapping_constraints
+    func applyNonOverlappingConstraints() throws -> MLMultiArray {
+        // Get batch size
+        let batchSize = self.shape[0].intValue
+
+        // Skip if batch size is 1
+        if batchSize == 1 {
+            return self
+        }
+
+        let H = self.shape[2].intValue
+        let W = self.shape[3].intValue
+
+        // Create output array
+        let output = try MLMultiArray(shape: self.shape, dataType: self.dataType)
+
+        // For each spatial position
+        for h in 0..<H {
+            for w in 0..<W {
+                var maxScore: Float = -Float.infinity
+                var maxIdx = 0
+
+                // Find max scoring object at this position
+                for b in 0..<batchSize {
+                    let score = self[[b, 0, h, w] as [NSNumber]].floatValue
+                    if score > maxScore {
+                        maxScore = score
+                        maxIdx = b
+                    }
+                }
+
+                // Set output - suppress overlapping regions
+                for b in 0..<batchSize {
+                    if b == maxIdx {
+                        output[[b, 0, h, w] as [NSNumber]] = self[[b, 0, h, w] as [NSNumber]]
+                    } else {
+                        // Clamp to -10 like in PyTorch version
+                        output[[b, 0, h, w] as [NSNumber]] = -10.0
+                    }
+                }
+            }
+        }
+
+        return output
+    }
 }

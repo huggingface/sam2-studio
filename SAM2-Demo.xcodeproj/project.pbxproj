@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -36,9 +36,10 @@
 				Common/CoreImageExtensions.swift,
 				Common/DirectoryDocument.swift,
 				"Common/MLMultiArray+Image.swift",
+				"Common/MLMultiArray+resized.swift",
 				Common/Models.swift,
 				Common/SAM2.swift,
-				SAM2_1SmallImageEncoderFLOAT16.mlpackage,
+				"Common/SAM2+utils.swift",
 				SAM2_1SmallMaskDecoderFLOAT16.mlpackage,
 				SAM2_1SmallPromptEncoderFLOAT16.mlpackage,
 			);

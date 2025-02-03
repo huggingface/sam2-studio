@@ -16,7 +16,7 @@ struct ImageView: View {
     @Binding var boundingBoxes: [SAMBox]
     @Binding var currentBox: SAMBox?
     @Binding var segmentationImages: [SAMSegmentation]
-    @Binding var currentSegmentation: SAMSegmentation?
+    var currentSegmentation: SAMSegmentation?
     @Binding var imageSize: CGSize
     @Binding var originalSize: NSSize?
     
@@ -118,19 +118,37 @@ struct ImageView: View {
     
     private func performForwardPass() {
         Task {
-            do {
-                try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
-                if let mask = try await sam2.getMask(for: originalSize ?? .zero) {
-                    DispatchQueue.main.async {
-                        let colorSet = self.segmentationImages.map { $0.tintColor };
-                        let furthestColor = furthestColor(from: colorSet, among: SAMSegmentation.candidateColors)
-                        let segmentationNumber = segmentationImages.count
-                        let segmentationOverlay = SAMSegmentation(image: mask, tintColor: furthestColor, title: "Untitled \(segmentationNumber + 1)")
-                        self.currentSegmentation = segmentationOverlay
+            if sam2.isVideoMode {
+                do {
+                    if let cgImage = try await sam2.getMaskForClick(
+                        frameIndex: sam2.currentFrameIndex,
+                        points: selectedPoints,
+                        isInitialFrame: selectedPoints.count == 1
+                    ) {
+//                        currentSegmentation = SAMSegmentation(
+//                            image: CIImage(cgImage: cgImage),
+//                            title: "Untitled \(segmentationImages.count + 1)"
+//                        )
                     }
+                } catch {
+                    print("Track step error: \(error)")
                 }
-            } catch {
-                self.error = error
+            } else {
+                do {
+                    try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
+                    let mask = try await sam2.getMask(imageEncodings: sam2.imageEncodings!, promptEncodings: sam2.promptEncodings!, for: originalSize ?? .zero)
+                    if let maskImage = mask.1 {
+                        DispatchQueue.main.async {
+                            let colorSet = self.segmentationImages.map { $0.tintColor };
+                            let furthestColor = furthestColor(from: colorSet, among: SAMSegmentation.candidateColors)
+                            let segmentationNumber = segmentationImages.count
+                            let segmentationOverlay = SAMSegmentation(image: maskImage, tintColor: furthestColor, title: "Untitled \(segmentationNumber + 1)")
+                            //self.currentSegmentation = segmentationOverlay
+                        }
+                    }
+                } catch {
+                    self.error = error
+                }
             }
         }
     }
